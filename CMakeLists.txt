@@ -26,12 +26,12 @@ FIND_PACKAGE(Boost 1.45.0 REQUIRED)
 #FIND_PACKAGE(Boost 1.45.0 REQUIRED COMPONENTS program_options)
 
 SET(KALEIDO_SRC_FILES
-	ext/kaleido-3.27/kaleido.c
-	ext/kaleido-3.27/uniform.c
+	ext/kaleido/kaleido.c
+	ext/kaleido/uniform.c
 )
 
 SET(KALEIDO_HEADER_FILES
-	ext/kaleido-3.27/kaleido.h
+	ext/kaleido/kaleido.h
 )
 
 SET(SRC_FILES
@@ -57,7 +57,7 @@ SET(HEADER_FILES
 INCLUDE_DIRECTORIES(
 	include
 	src
-	ext/kaleido-3.27
+	ext/kaleido
 	ext/vf-master
 	${OSG_INCLUDE_DIR}
 	${Boost_INCLUDE_DIRS}
