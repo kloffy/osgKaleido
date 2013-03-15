@@ -5,8 +5,13 @@
 
 #include <osg/Geometry>
 
+#include <ckaleido>
+
 namespace osgKaleido {
 
+/**
+ * Polyhedron is a RAII wrapper around kaleido polyhedron data.
+ */
 class OSGKALEIDO_EXPORT Polyhedron: public osg::Referenced
 {
 public:
@@ -26,15 +31,41 @@ public:
 		All           = ~None,
 	};
 
-	Polyhedron(std::string const& symbol);
+	Polyhedron(std::string const&);
+
+	std::string const& getName() const;
+	std::string const& getConfiguration() const;
+
+	int getFaceCount(Faces=Faces::All);
+
+	bool isOneSided() const;
+	bool isHemi() const;
+
+	inline ::Polyhedron* getData() const
+	{
+		return _data;
+	}
+
+	inline bool getStatus() const
+	{
+		return !(_data == nullptr);
+	}
 
 protected:
 	// Use reference counting.
 	virtual ~Polyhedron(); 
 
 private:
+	void update();
+
 	std::string _symbol;
+	std::string _name;
+	std::string _configuration;
+
+	::Polyhedron* _data;
 };
+
+extern OSGKALEIDO_EXPORT osg::Geometry* createFaces(Polyhedron const*, Polyhedron::Faces=Polyhedron::Faces::All);
 
 } // osgKaleido
 

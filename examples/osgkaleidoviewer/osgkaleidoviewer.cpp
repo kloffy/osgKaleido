@@ -2,12 +2,33 @@
 #pragma warning(disable: 4250)
 
 #include <osg/ArgumentParser>
+#include <osg/LightModel>
+#include <osg/PolygonMode>
+#include <osgGA/LambdaEventHandler>
 #include <osgGA/TrackballManipulator>
 #include <osgViewer/Viewer>
 
 #pragma warning(pop)
 
 #include <osgKaleido/Polyhedron>
+
+#include <wild/conversion.hpp>
+
+inline int mod(int x, int m)
+{
+	int r = x % m;
+	return r<0 ? r+m : r;
+}
+
+void selectPolyhedron(osg::ref_ptr<osg::Geode>& geode, osg::ref_ptr<osg::Geometry>& geometry, int index, int faces)
+{
+	auto symbol = "#" + wild::conversion_cast<std::string>(mod(index, 80) + 1);
+	osg::ref_ptr<osgKaleido::Polyhedron> p = new osgKaleido::Polyhedron(symbol);
+	
+	if (geometry) geode->removeDrawable(geometry);
+	geometry = osgKaleido::createFaces(p.get(), static_cast<osgKaleido::Polyhedron::Faces>(faces));
+	if (geometry) geode->addDrawable(geometry);
+}
 
 int main(int argc, char** argv)
 {
@@ -30,6 +51,7 @@ int main(int argc, char** argv)
 
 	osg::ref_ptr<osg::Group> root = new osg::Group;
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+	osg::ref_ptr<osg::Geometry> geometry;
 
 	osgViewer::Viewer viewer;
 	viewer.setUpViewInWindow((screenSettings.width - windowWidth)/2, (screenSettings.height - windowHeight)/2, 800, 600);
@@ -38,16 +60,57 @@ int main(int argc, char** argv)
 	//viewer.setRunMaxFrameRate(0.0);
 	viewer.realize();
 
-	//osg::ref_ptr<osgKaleido::Polyhedron> p = new osgKaleido::Polyhedron("#10");
+	osg::ref_ptr<osg::LightModel> lightModel = new osg::LightModel;
+	lightModel->setTwoSided(true);
 
-	//OSG_WARN << osgKaleido::Polyhedron::Faces::All << std::endl;
+	osg::ref_ptr<osg::PolygonMode> polygonMode = new osg::PolygonMode;
+	polygonMode->setMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::FILL);
 
-	//geode->addDrawable(p.get());
+	auto stateSet = root->getOrCreateStateSet();
+	stateSet->setAttributeAndModes(lightModel, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
+	stateSet->setAttributeAndModes(polygonMode, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
+
+	osg::ref_ptr<osgGA::LambdaEventHandler> eventHandler = new osgGA::LambdaEventHandler;
+
+	int faces = osgKaleido::Polyhedron::All;
+	int index = 10;
+	eventHandler->onKeyDown([&](const osgGA::GUIEventAdapter& ea){
+		auto key = ea.getKey();
+		auto num = key - osgGA::GUIEventAdapter::KEY_0;
+		if (0 <= num && num <= 9)
+		{
+			faces ^= (1 << mod(num-1, 10));
+			selectPolyhedron(geode, geometry, index, faces);
+			return true;
+		}
+		switch (key)
+		{
+		case osgGA::GUIEventAdapter::KEY_Right:
+		{
+			index++;
+			faces = osgKaleido::Polyhedron::All;
+			selectPolyhedron(geode, geometry, index, faces);
+			return true;
+		}
+		case osgGA::GUIEventAdapter::KEY_Left:
+		{
+			index--;
+			faces = osgKaleido::Polyhedron::All;
+			selectPolyhedron(geode, geometry, index, faces);
+			return true;
+		}
+		default:
+			return false;
+		}
+	});
+
+	selectPolyhedron(geode, geometry, index, faces);
 
 	root->addChild(geode);
 
 	viewer.setSceneData(root.get());
 	viewer.setCameraManipulator(new osgGA::TrackballManipulator);
+	viewer.addEventHandler(eventHandler);
 
 	return viewer.run();
 }

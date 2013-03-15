@@ -1,5 +1,7 @@
 PROJECT(osgKaleidoViewer)
 
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR})
+
 ADD_EXECUTABLE(osgKaleidoViewer osgkaleidoviewer.cpp)
 
 TARGET_LINK_LIBRARIES(osgKaleidoViewer

@@ -1,0 +1,95 @@
+#pragma once
+
+#include <osgGA/GUIEventHandler>
+
+#include <functional>
+
+namespace osgGA {
+
+class LambdaEventHandler: public GUIEventHandler
+{
+public:
+	typedef std::function<bool(const GUIEventAdapter&)> callback_t;
+
+	LambdaEventHandler(): _onKeyDown(nullptr), _onKeyUp(nullptr) {}
+
+	virtual bool handle(const GUIEventAdapter& ea, GUIActionAdapter&)
+	{
+		switch(ea.getEventType())
+		{
+		case(GUIEventAdapter::PUSH):
+		{
+			return invoke(_onPush, ea);
+		}
+		case(GUIEventAdapter::RELEASE):
+		{
+			return invoke(_onRelease, ea);
+		}
+		case(GUIEventAdapter::MOVE):
+		{
+			return invoke(_onMove, ea);
+		}
+		case(GUIEventAdapter::KEYDOWN):
+		{
+			return invoke(_onKeyDown, ea);
+		}
+		case(GUIEventAdapter::KEYUP):
+		{
+			return invoke(_onKeyUp, ea);
+		}
+		default:
+			return false;
+		}
+	}
+
+	template<typename F>
+	void onPush(F& push) 
+	{
+		_onPush = push;
+	}
+
+	template<typename F>
+	void onRelease(F& release)
+	{
+		_onKeyUp = release;
+	}
+
+	template<typename F>
+	void onMove(F& move)
+	{
+		_onMove = move;
+	}
+
+	template<typename F>
+	void onKeyDown(F& keyDown) 
+	{
+		_onKeyDown = keyDown;
+	}
+
+	template<typename F>
+	void onKeyUp(F& keyUp)
+	{
+		_onKeyUp = keyUp;
+	}
+
+	virtual void accept(GUIEventHandlerVisitor& v)
+	{
+		v.visit(*this);
+	}
+
+private:
+	std::function<bool(const GUIEventAdapter&)> _onPush;
+	std::function<bool(const GUIEventAdapter&)> _onRelease;
+	std::function<bool(const GUIEventAdapter&)> _onMove;
+	std::function<bool(const GUIEventAdapter&)> _onKeyDown;
+	std::function<bool(const GUIEventAdapter&)> _onKeyUp;
+
+	bool invoke(const callback_t& callback, const GUIEventAdapter& ea)
+	{
+		if (callback) return callback(ea);
+
+		return false;
+	}
+};
+
+}

@@ -1,8 +1,28 @@
 #ifndef OSGKALEIDO_UTIL_INCLUDED
 #define OSGKALEIDO_UTIL_INCLUDED
 
+#include <string>
+
+#include <ckaleido>
+
 namespace osgKaleido {
+
+inline int mod(int x, int m)
+{
+	int r = x % m;
+	return r<0 ? r+m : r;
+}
+
+void throw_exception();
+
+template <typename T>
+bool validate_or_throw(T const& object)
+{
+	auto result = object.getStatus();
+	if (!result) throw_exception();
+	return result;
+}
 
 } // osgKaleido
 
-#endif // OSGKALEIDO_EXPORT_INCLUDED
+#endif // OSGKALEIDO_UTIL_INCLUDED

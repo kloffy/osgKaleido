@@ -9,6 +9,15 @@
 namespace wild {
 
 template<>
+struct conversion<osg::Vec3d, ::Vector>
+{
+	osg::Vec3d operator()(::Vector const& value) const
+	{
+		return osg::Vec3d(value.x, value.y, value.z);
+	}
+};
+
+template<>
 struct conversion<::Vector, osg::Vec3d>
 {
 	::Vector operator()(osg::Vec3d const& value) const
@@ -22,11 +31,24 @@ struct conversion<::Vector, osg::Vec3d>
 };
 
 template<>
-struct conversion<osg::Vec3d, ::Vector>
+struct conversion<osg::Vec4d, ::Vector>
 {
-	osg::Vec3d operator()(::Vector const& value) const
+	osg::Vec4d operator()(::Vector const& value) const
 	{
-		return osg::Vec3d(value.x, value.y, value.z);
+		return osg::Vec4d(value.x, value.y, value.z, 1.0);
+	}
+};
+
+template<>
+struct conversion<::Vector, osg::Vec4d>
+{
+	::Vector operator()(osg::Vec4d const& value) const
+	{
+		::Vector result;
+		result.x = value.x();
+		result.y = value.y();
+		result.z = value.z();
+		return result;
 	}
 };
 
