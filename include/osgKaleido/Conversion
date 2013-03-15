@@ -1,0 +1,35 @@
+#ifndef OSGKALEIDO_CONVERSION_HPP
+#define OSGKALEIDO_CONVERSION_HPP
+
+#include <vf/conversion.hpp>
+
+#include <osg/Vec3d>
+#include <ckaleido>
+
+namespace vf {
+
+template<>
+struct conversion<::Vector, osg::Vec3d>
+{
+	::Vector operator()(osg::Vec3d const& value) const
+	{
+		::Vector result;
+		result.x = value.x();
+		result.y = value.y();
+		result.z = value.z();
+		return result;
+	}
+};
+
+template<>
+struct conversion<osg::Vec3d, ::Vector>
+{
+	osg::Vec3d operator()(::Vector const& value) const
+	{
+		return osg::Vec3d(value.x, value.y, value.z);
+	}
+};
+
+} //vf
+
+#endif

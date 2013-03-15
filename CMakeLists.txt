@@ -40,7 +40,7 @@ SET(SRC_FILES
 )
 
 SET(PRIVATE_HEADER_FILES
-	include/osgKaleido/conversion.hpp
+	include/osgKaleido/Conversion
 )
 
 SET(PUBLIC_HEADER_FILES
@@ -58,7 +58,7 @@ INCLUDE_DIRECTORIES(
 	include
 	src
 	ext/kaleido
-	ext/vf-master
+	ext/wildcard
 	${OSG_INCLUDE_DIR}
 	${Boost_INCLUDE_DIRS}
 )
