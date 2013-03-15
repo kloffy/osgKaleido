@@ -1,12 +1,12 @@
-#ifndef OSGKALEIDO_CONVERSION_HPP
-#define OSGKALEIDO_CONVERSION_HPP
+#ifndef OSGKALEIDO_CONVERSION_INCLUDED
+#define OSGKALEIDO_CONVERSION_INCLUDED
 
-#include <vf/conversion.hpp>
+#include <wild/conversion.hpp>
 
 #include <osg/Vec3d>
 #include <ckaleido>
 
-namespace vf {
+namespace wild {
 
 template<>
 struct conversion<::Vector, osg::Vec3d>
@@ -30,6 +30,6 @@ struct conversion<osg::Vec3d, ::Vector>
 	}
 };
 
-} //vf
+} // wild
 
-#endif
+#endif // OSGKALEIDO_CONVERSION_INCLUDED

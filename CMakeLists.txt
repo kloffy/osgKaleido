@@ -2,7 +2,7 @@ PROJECT(osgKaleido)
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
-#SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
+SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
 
 SET(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Add a postfix, usually d on windows.")
 SET(CMAKE_RELEASE_POSTFIX "" CACHE STRING "Add a postfix, usually empty on windows.")
@@ -21,7 +21,7 @@ ELSE()
     SET(CMAKE_BUILD_POSTFIX "")
 ENDIF()
 
-FIND_PACKAGE(OpenSceneGraph 3.0.0 REQUIRED)
+FIND_PACKAGE(OpenSceneGraph 3.0.0 REQUIRED COMPONENTS osgGA osgUtil osgViewer)
 FIND_PACKAGE(Boost 1.45.0 REQUIRED)
 #FIND_PACKAGE(Boost 1.45.0 REQUIRED COMPONENTS program_options)
 
@@ -41,12 +41,12 @@ SET(SRC_FILES
 
 SET(PRIVATE_HEADER_FILES
 	include/osgKaleido/Conversion
+	include/osgKaleido/Util
 )
 
 SET(PUBLIC_HEADER_FILES
 	include/osgKaleido/Export
 	include/osgKaleido/Polyhedron
-	include/osgKaleido/Util
 )
 
 SET(HEADER_FILES

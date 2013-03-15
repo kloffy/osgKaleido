@@ -1,8 +1,8 @@
-#ifndef OSGKALEIDO_UTIL_
-#define OSGKALEIDO_UTIL_
+#ifndef OSGKALEIDO_UTIL_INCLUDED
+#define OSGKALEIDO_UTIL_INCLUDED
 
 namespace osgKaleido {
 
-}
+} // osgKaleido
 
-#endif
+#endif // OSGKALEIDO_EXPORT_INCLUDED

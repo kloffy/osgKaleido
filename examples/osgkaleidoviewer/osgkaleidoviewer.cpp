@@ -38,11 +38,11 @@ int main(int argc, char** argv)
 	//viewer.setRunMaxFrameRate(0.0);
 	viewer.realize();
 
-	osg::ref_ptr<osgKaleido::Polyhedron> p = new osgKaleido::Polyhedron("#10");
+	//osg::ref_ptr<osgKaleido::Polyhedron> p = new osgKaleido::Polyhedron("#10");
 
-	OSG_WARN << osgKaleido::Polyhedron::Faces::All << std::endl;
+	//OSG_WARN << osgKaleido::Polyhedron::Faces::All << std::endl;
 
-	geode->addDrawable(p.get());
+	//geode->addDrawable(p.get());
 
 	root->addChild(geode);
 
