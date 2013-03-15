@@ -1,0 +1,3 @@
+[submodule "ext/kaleido"]
+	path = ext/kaleido
+	url = https://github.com/kloffy/kaleido.git
