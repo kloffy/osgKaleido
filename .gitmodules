@@ -1,3 +1,6 @@
 [submodule "ext/kaleido"]
 	path = ext/kaleido
 	url = https://github.com/kloffy/kaleido.git
+[submodule "ext/wildcard"]
+	path = ext/wildcard
+	url = https://github.com/kloffy/wildcard.git
