@@ -1,0 +1,10 @@
+#ifndef OSGKALEIDO_POLYHEDRON_
+#define OSGKALEIDO_POLYHEDRON_
+
+#include <osgKaleido/Export>
+
+namespace osgKaleido {
+
+} //osgKaleido
+
+#endif

@@ -23,7 +23,7 @@ ENDIF()
 
 FIND_PACKAGE(OpenSceneGraph 3.0.0 REQUIRED)
 FIND_PACKAGE(Boost 1.45.0 REQUIRED)
-#FIND_PACKAGE(Boost 1.45.0 REQUIRED COMPONENTS program_options regex )
+#FIND_PACKAGE(Boost 1.45.0 REQUIRED COMPONENTS program_options)
 
 SET(KALEIDO_SRC_FILES
 	ext/kaleido-3.27/kaleido.c
