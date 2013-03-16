@@ -16,7 +16,7 @@ inline int mod(int x, int m)
 void throw_exception();
 
 template <typename T>
-bool validate_or_throw(T const& object)
+bool check_status(T const& object)
 {
 	auto result = object.getStatus();
 	if (!result) throw_exception();

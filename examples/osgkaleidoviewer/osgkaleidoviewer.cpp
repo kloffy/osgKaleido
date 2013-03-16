@@ -20,13 +20,17 @@ inline int mod(int x, int m)
 	return r<0 ? r+m : r;
 }
 
-void selectPolyhedron(osg::ref_ptr<osg::Geode>& geode, osg::ref_ptr<osg::Geometry>& geometry, int index, int faces)
+void createPolyhedron(osg::ref_ptr<osgKaleido::Polyhedron>& polyhedron, int index)
 {
 	auto symbol = "#" + wild::conversion_cast<std::string>(mod(index, 80) + 1);
-	osg::ref_ptr<osgKaleido::Polyhedron> p = new osgKaleido::Polyhedron(symbol);
-	
+
+	polyhedron = new osgKaleido::Polyhedron(symbol);
+}
+
+void updatePolyhedron(osg::ref_ptr<osg::Geode>& geode, osg::ref_ptr<osg::Geometry>& geometry, osg::ref_ptr<osgKaleido::Polyhedron>& polyhedron, int faces)
+{
 	if (geometry) geode->removeDrawable(geometry);
-	geometry = osgKaleido::createFaces(p.get(), static_cast<osgKaleido::Polyhedron::Faces>(faces));
+	geometry = osgKaleido::createFaces(polyhedron.get(), static_cast<osgKaleido::Polyhedron::Faces>(faces));
 	if (geometry) geode->addDrawable(geometry);
 }
 
@@ -52,6 +56,7 @@ int main(int argc, char** argv)
 	osg::ref_ptr<osg::Group> root = new osg::Group;
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	osg::ref_ptr<osg::Geometry> geometry;
+	osg::ref_ptr<osgKaleido::Polyhedron> polyhedron;
 
 	osgViewer::Viewer viewer;
 	viewer.setUpViewInWindow((screenSettings.width - windowWidth)/2, (screenSettings.height - windowHeight)/2, 800, 600);
@@ -73,38 +78,47 @@ int main(int argc, char** argv)
 	osg::ref_ptr<osgGA::LambdaEventHandler> eventHandler = new osgGA::LambdaEventHandler;
 
 	int faces = osgKaleido::Polyhedron::All;
-	int index = 10;
+	int index = 26;
+
+	createPolyhedron(polyhedron, index);
+	updatePolyhedron(geode, geometry, polyhedron, faces);
+
 	eventHandler->onKeyDown([&](const osgGA::GUIEventAdapter& ea){
 		auto key = ea.getKey();
 		auto num = key - osgGA::GUIEventAdapter::KEY_0;
 		if (0 <= num && num <= 9)
 		{
 			faces ^= (1 << mod(num-1, 10));
-			selectPolyhedron(geode, geometry, index, faces);
+			updatePolyhedron(geode, geometry, polyhedron, faces);
 			return true;
 		}
 		switch (key)
 		{
+		case osgGA::GUIEventAdapter::KEY_L:
+		{
+			lightModel->setTwoSided(!lightModel->getTwoSided());
+			return true;
+		}
 		case osgGA::GUIEventAdapter::KEY_Right:
 		{
 			index++;
 			faces = osgKaleido::Polyhedron::All;
-			selectPolyhedron(geode, geometry, index, faces);
+			createPolyhedron(polyhedron, index);
+			updatePolyhedron(geode, geometry, polyhedron, faces);
 			return true;
 		}
 		case osgGA::GUIEventAdapter::KEY_Left:
 		{
 			index--;
 			faces = osgKaleido::Polyhedron::All;
-			selectPolyhedron(geode, geometry, index, faces);
+			createPolyhedron(polyhedron, index);
+			updatePolyhedron(geode, geometry, polyhedron, faces);
 			return true;
 		}
 		default:
 			return false;
 		}
 	});
-
-	selectPolyhedron(geode, geometry, index, faces);
 
 	root->addChild(geode);
 

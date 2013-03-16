@@ -57,11 +57,12 @@ Polyhedron::Faces polyhedron_ftype_face(::Polyhedron* P, int ftype)
 	return static_cast<Polyhedron::Faces>(1 << (sides - 3));
 }
 
-::Vector polyhedron_face_color(Polyhedron::Faces face)
+::Vector polyhedron_face_color(::Polyhedron* P, int ftype)
 {
 	::Vector result;
 
-	int x = static_cast<int>(face);
+	int sides = polyhedron_ftype_sides(P, ftype);
+	int x = sides - 2;
 
 	result.x = std::max(0.25f, static_cast<float>((x >> 0) & 1));
 	result.y = std::max(0.25f, static_cast<float>((x >> 1) & 1));
@@ -87,11 +88,13 @@ int polyhedron_count_faces(::Polyhedron* P, Polyhedron::Faces faces)
 
 Polyhedron::Polyhedron(std::string const& symbol): _symbol(symbol), _data(nullptr)
 {
+	OSG_DEBUG << "Create Polyhedron" << std::endl;
+
 	int need_coordinates = 1, need_edgelist = 1, need_approx = 0, just_list = 0;
 
 	_data = kaleido(const_cast<char*>(_symbol.c_str()), need_coordinates, need_edgelist, need_approx, just_list);
 
-	if (validate_or_throw(*this))
+	if (check_status(*this))
 	{
 		update();
 	}
@@ -99,6 +102,8 @@ Polyhedron::Polyhedron(std::string const& symbol): _symbol(symbol), _data(nullpt
 
 Polyhedron::~Polyhedron()
 {
+	OSG_DEBUG << "Delete Polyhedron" << std::endl;
+
 	polyfree(_data);
 }
 
@@ -157,7 +162,8 @@ osg::Geometry* createFaces(Polyhedron const* polyhedron, Polyhedron::Faces faces
 
 	for (int f = 0; f < P->F; f++)
 	{
-		auto face = detail::polyhedron_ftype_face(P, P->ftype[f]);
+		auto ftype = P->ftype[f];
+		auto face = detail::polyhedron_ftype_face(P, ftype);
 
 		if (!(faces & face)) continue;
 
@@ -184,7 +190,7 @@ osg::Geometry* createFaces(Polyhedron const* polyhedron, Polyhedron::Faces faces
 		auto c = vertices->at(vertices->size()-3);
 		auto normal = (a-b) ^ (c-b);
 		normal.normalize();
-		auto color = wild::conversion_cast<osg::Vec4d>(detail::polyhedron_face_color(face));
+		auto color = wild::conversion_cast<osg::Vec4d>(detail::polyhedron_face_color(P, ftype));
 		for (auto i=0u; i < count; ++i)
 		{
 			normals->push_back(normal);
