@@ -31,10 +31,19 @@ public:
 		All           = ~None,
 	};
 
+	static Faces sidesToFaces(int sides);
+	static int facesToSides(Faces faces);
+
 	Polyhedron(std::string const&);
 
-	std::string const& getName() const;
-	std::string const& getConfiguration() const;
+	std::string const& getSymbol() const;
+
+	std::string getName() const;
+	std::string getDualName() const;
+	std::string getWythoffSymbol() const;
+	std::string getVertexConfiguration() const;
+
+	osg::Vec3Array* getVertices() const;
 
 	int getFaceCount(Faces=Faces::All);
 
@@ -56,11 +65,7 @@ protected:
 	virtual ~Polyhedron(); 
 
 private:
-	void update();
-
 	std::string _symbol;
-	std::string _name;
-	std::string _configuration;
 
 	::Polyhedron* _data;
 };

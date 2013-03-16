@@ -13,18 +13,18 @@
 #include <osgKaleido/Polyhedron>
 
 #include <wild/conversion.hpp>
-
-inline int mod(int x, int m)
-{
-	int r = x % m;
-	return r<0 ? r+m : r;
-}
+#include <wild/math.hpp>
+#include <wild/bits.hpp>
 
 void createPolyhedron(osg::ref_ptr<osgKaleido::Polyhedron>& polyhedron, int index)
 {
-	auto symbol = "#" + wild::conversion_cast<std::string>(mod(index, 80) + 1);
+	auto symbol = "#" + wild::conversion_cast<std::string>(wild::mod(index, 80) + 1);
 
 	polyhedron = new osgKaleido::Polyhedron(symbol);
+
+	OSG_INFO << polyhedron->getName() << ", " << polyhedron->getDualName() << "*" << std::endl;
+	OSG_INFO << polyhedron->getWythoffSymbol() << std::endl;
+	OSG_INFO << polyhedron->getVertexConfiguration() << std::endl;
 }
 
 void updatePolyhedron(osg::ref_ptr<osg::Geode>& geode, osg::ref_ptr<osg::Geometry>& geometry, osg::ref_ptr<osgKaleido::Polyhedron>& polyhedron, int faces)
@@ -36,6 +36,8 @@ void updatePolyhedron(osg::ref_ptr<osg::Geode>& geode, osg::ref_ptr<osg::Geometr
 
 int main(int argc, char** argv)
 {
+	//osg::setNotifyLevel(osg::INFO);
+
 	osg::ArgumentParser arguments(&argc,argv);
 
 	osg::observer_ptr<osg::GraphicsContext::WindowingSystemInterface> wsi = osg::GraphicsContext::getWindowingSystemInterface(); 
@@ -88,7 +90,7 @@ int main(int argc, char** argv)
 		auto num = key - osgGA::GUIEventAdapter::KEY_0;
 		if (0 <= num && num <= 9)
 		{
-			faces ^= (1 << mod(num-1, 10));
+			faces ^= (1 << wild::mod(num-1, 10));
 			updatePolyhedron(geode, geometry, polyhedron, faces);
 			return true;
 		}

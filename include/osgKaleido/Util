@@ -7,16 +7,10 @@
 
 namespace osgKaleido {
 
-inline int mod(int x, int m)
-{
-	int r = x % m;
-	return r<0 ? r+m : r;
-}
-
 void throw_exception();
 
-template <typename T>
-bool check_status(T const& object)
+template<class T>
+bool check_object_status_and_throw_exception(const T& object)
 {
 	auto result = object.getStatus();
 	if (!result) throw_exception();
