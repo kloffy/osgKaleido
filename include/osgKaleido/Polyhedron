@@ -43,14 +43,16 @@ public:
 	std::string getWythoffSymbol() const;
 	std::string getVertexConfiguration() const;
 
-	osg::Vec3Array* getVertices() const;
-
-	int getFaceCount(Faces=Faces::All);
-
+	std::size_t Polyhedron::getVertexCount() const;
+	std::size_t Polyhedron::getFaceCount() const;
+	std::size_t Polyhedron::getFaceCount(Faces) const;
+	
 	bool isOneSided() const;
 	bool isHemi() const;
 
-	inline ::Polyhedron* getData() const
+	osg::Vec3Array* getVertices() const;
+
+	inline ::Polyhedron const* getData() const
 	{
 		return _data;
 	}

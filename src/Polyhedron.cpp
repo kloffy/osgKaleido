@@ -14,7 +14,7 @@ namespace detail {
 /*
  * Check if the vertex belongs to a given face.
  */
-int polyhedron_face_contains_vertex(::Polyhedron *P, int f, int v)
+int polyhedron_face_contains_vertex(::Polyhedron const* P, int f, int v)
 {
 	for (int m = 0; m < P->M; ++m) 
 	{
@@ -26,7 +26,7 @@ int polyhedron_face_contains_vertex(::Polyhedron *P, int f, int v)
 /*
  * Search all vertices of for a vertex belonging to a given face.
  */
-int polyhedron_face_first_vertex(::Polyhedron *P, int f, int& k)
+int polyhedron_face_first_vertex(::Polyhedron const* P, int f, int& k)
 {
 	for (int v = 0; v < P->V; ++v)
 	{
@@ -38,7 +38,7 @@ int polyhedron_face_first_vertex(::Polyhedron *P, int f, int& k)
 /*
  * Search vertices adjacent to the current vertex for another vertex belonging to a given face.
  */
-int polyhedron_face_next_vertex(::Polyhedron *P, int f, int& k, int cv, int pv)
+int polyhedron_face_next_vertex(::Polyhedron const* P, int f, int& k, int cv, int pv)
 {
 	for (int m = 0; m < P->M; ++m)
 	{
@@ -49,12 +49,12 @@ int polyhedron_face_next_vertex(::Polyhedron *P, int f, int& k, int cv, int pv)
 	return -1;
 }
 
-int polyhedron_ftype_sides(::Polyhedron* P, int ftype)
+int polyhedron_ftype_sides(::Polyhedron const* P, int ftype)
 {
 	return numerator(P->n[ftype]);
 }
 
-::Vector polyhedron_face_color(::Polyhedron* P, int ftype)
+::Vector polyhedron_face_color(::Polyhedron const* P, int ftype)
 {
 	::Vector result;
 
@@ -68,7 +68,7 @@ int polyhedron_ftype_sides(::Polyhedron* P, int ftype)
 	return result;
 }
 
-int polyhedron_count_faces(::Polyhedron* P, Polyhedron::Faces faces)
+int polyhedron_count_faces(::Polyhedron const* P, Polyhedron::Faces faces)
 {
 	int result = 0;
 	for(int n = 0; n < P->N; ++n)
@@ -145,17 +145,17 @@ std::string Polyhedron::getVertexConfiguration() const
 	return wild::conversion_cast<std::string>(_data->config);
 }
 
-osg::Vec3Array* Polyhedron::getVertices() const
+std::size_t Polyhedron::getVertexCount() const
 {
-	osg::Vec3Array* result = new osg::Vec3Array;
-	for (int v = 0; v < _data->V; ++v)
-	{
-		result->push_back(wild::conversion_cast<osg::Vec3d>(_data->v[v]));
-	}
-	return result;
+	return _data->V;
 }
 
-int Polyhedron::getFaceCount(Faces faces)
+std::size_t Polyhedron::getFaceCount() const
+{
+	return _data->F;
+}
+
+std::size_t Polyhedron::getFaceCount(Faces faces) const
 {
 	return detail::polyhedron_count_faces(_data, faces);
 }
@@ -168,6 +168,16 @@ bool Polyhedron::isOneSided() const
 bool Polyhedron::isHemi() const
 {
 	return _data->hemi != 0;
+}
+
+osg::Vec3Array* Polyhedron::getVertices() const
+{
+	osg::Vec3Array* result = new osg::Vec3Array;
+	for (int v = 0; v < _data->V; ++v)
+	{
+		result->push_back(wild::conversion_cast<osg::Vec3d>(_data->v[v]));
+	}
+	return result;
 }
 
 osg::Geometry* createFaces(Polyhedron const* polyhedron, Polyhedron::Faces faces)
