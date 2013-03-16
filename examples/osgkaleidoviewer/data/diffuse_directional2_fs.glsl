@@ -7,7 +7,7 @@ out vec4 fragData;
 
 void main() 
 {
-	if( gl_FrontFacing )
+	if(gl_FrontFacing)
 	{
 		fragData = frontColor;
 	}

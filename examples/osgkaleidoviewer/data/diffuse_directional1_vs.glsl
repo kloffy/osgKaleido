@@ -10,7 +10,7 @@ in vec4 osg_Color; // Kd
 uniform vec3 ecLightDirection;
 uniform vec3 lightColor; // Ld
 
-out vec4 color;
+out vec4 frontColor;
 
 vec3 diffuseModel(vec3 lightDirection, vec3 normal, vec3 Ld, vec3 Kd)
 {
@@ -21,7 +21,7 @@ void main()
 {
 	vec3 ecNormal = normalize(osg_NormalMatrix * osg_Normal);
 	
-	color = vec4(diffuseModel(ecLightDirection, ecNormal, lightColor, osg_Color.rgb), osg_Color.a);
+	frontColor = vec4(diffuseModel(ecLightDirection, ecNormal, lightColor, osg_Color.rgb), osg_Color.a);
 	
 	gl_Position = osg_ModelViewProjectionMatrix * vec4(osg_Vertex, 1.0);
 }
