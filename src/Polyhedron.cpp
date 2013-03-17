@@ -5,13 +5,15 @@
 
 #include <osgUtil/Tessellator>
 
+#include <ckaleido>
+
 #include <wild/math.hpp>
 #include <wild/bits.hpp>
 
 namespace osgKaleido {
 namespace detail {
 
-/*
+/**
  * Check if the vertex belongs to a given face.
  */
 int polyhedron_face_contains_vertex(::Polyhedron const* P, int f, int v)
@@ -23,7 +25,7 @@ int polyhedron_face_contains_vertex(::Polyhedron const* P, int f, int v)
 	return -1;
 }
 
-/*
+/**
  * Search all vertices of for a vertex belonging to a given face.
  */
 int polyhedron_face_first_vertex(::Polyhedron const* P, int f, int& k)
@@ -35,7 +37,7 @@ int polyhedron_face_first_vertex(::Polyhedron const* P, int f, int& k)
 	return -1;
 }
 
-/*
+/**
  * Search vertices adjacent to the current vertex for another vertex belonging to a given face.
  */
 int polyhedron_face_next_vertex(::Polyhedron const* P, int f, int& k, int cv, int pv)
@@ -68,13 +70,13 @@ int polyhedron_ftype_sides(::Polyhedron const* P, int ftype)
 	return result;
 }
 
-int polyhedron_count_faces(::Polyhedron const* P, Polyhedron::Faces faces)
+int polyhedron_count_faces(::Polyhedron const* P, osgKaleido::Polyhedron::Faces faces)
 {
 	int result = 0;
 	for(int n = 0; n < P->N; ++n)
 	{
 		auto sides = polyhedron_ftype_sides(P, n);
-		if(faces & Polyhedron::sidesToFaces(sides))
+		if(faces & Polyhedron::sidesToFace(sides))
 		{
 			result += P->m[n];
 		}
@@ -87,7 +89,7 @@ int polyhedron_count_faces(::Polyhedron const* P, Polyhedron::Faces faces)
 /**
  * faces = pow(2, sides-3)
  */
-Polyhedron::Faces Polyhedron::sidesToFaces(int sides)
+Polyhedron::Faces Polyhedron::sidesToFace(int sides)
 {
 	assert(sides > 2);
 	return static_cast<Polyhedron::Faces>(1 << (sides - 3));
@@ -96,7 +98,7 @@ Polyhedron::Faces Polyhedron::sidesToFaces(int sides)
 /**
  * sides = log(2, faces)+3
  */
-int Polyhedron::facesToSides(Polyhedron::Faces faces)
+int Polyhedron::faceToSides(Polyhedron::Faces faces)
 {
 	assert(faces > 0);
 	return wild::fls(faces) + 3;
@@ -110,7 +112,7 @@ Polyhedron::Polyhedron(std::string const& symbol): _symbol(symbol), _data(nullpt
 
 	_data = kaleido(const_cast<char*>(_symbol.c_str()), need_coordinates, need_edgelist, need_approx, just_list);
 
-	check_object_status_and_throw_exception(*this);
+	checkStatusAndThrowException(*this);
 }
 
 Polyhedron::~Polyhedron()
@@ -170,14 +172,16 @@ bool Polyhedron::isHemi() const
 	return _data->hemi != 0;
 }
 
-osg::Vec3Array* Polyhedron::getVertices() const
+osg::Vec3Array* createVertices(Polyhedron const* polyhedron)
 {
-	osg::Vec3Array* result = new osg::Vec3Array;
-	for (int v = 0; v < _data->V; ++v)
+	auto P = polyhedron->getData();
+
+	osg::ref_ptr<osg::Vec3Array> result = new osg::Vec3Array;
+	for (int v = 0; v < P->V; ++v)
 	{
-		result->push_back(wild::conversion_cast<osg::Vec3d>(_data->v[v]));
+		result->push_back(wild::conversion_cast<osg::Vec3d>(P->v[v]));
 	}
-	return result;
+	return result.release();
 }
 
 osg::Geometry* createFaces(Polyhedron const* polyhedron, Polyhedron::Faces faces)
@@ -206,22 +210,24 @@ osg::Geometry* createFaces(Polyhedron const* polyhedron, Polyhedron::Faces faces
 	{
 		auto ftype = P->ftype[f];
 		auto sides = detail::polyhedron_ftype_sides(P, ftype);
-		auto face = Polyhedron::sidesToFaces(sides);
+		auto face = Polyhedron::sidesToFace(sides);
 
 		if (!(faces & face)) continue;
 
 		auto size = vertices->size();
 
+		// Using this as an offset into the adjacency matrix (mostly) ensures correct winding.
 		int magic = 0;
+		// fv, pv, cv, nv
 		int fv = detail::polyhedron_face_first_vertex(P, f, magic);
 		int nv = fv, pv = fv;
 		do
 		{
-			int v = nv;
-			vertices->push_back(wild::conversion_cast<osg::Vec3d>(P->v[v]));
-			nv = detail::polyhedron_face_next_vertex(P, f, magic, v, pv);
+			int cv = nv;
+			vertices->push_back(wild::conversion_cast<osg::Vec3d>(P->v[cv]));
+			nv = detail::polyhedron_face_next_vertex(P, f, magic, cv, pv);
+			pv = cv;
 			if (fv == nv) break;
-			pv = v;
 		}
 		while (true);
 

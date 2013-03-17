@@ -7,13 +7,13 @@
 
 namespace osgKaleido {
 
-void throw_exception();
+void throwException();
 
 template<class T>
-bool check_object_status_and_throw_exception(const T& object)
+bool checkStatusAndThrowException(const T& object)
 {
 	auto result = object.getStatus();
-	if (!result) throw_exception();
+	if (!result) throwException();
 	return result;
 }
 

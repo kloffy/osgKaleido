@@ -1,4 +1,5 @@
-#pragma once
+#ifndef OSGGA_LAMBDAEVENTHANDLER_INCLUDED
+#define OSGGA_LAMBDAEVENTHANDLER_INCLUDED
 
 #include <osgGA/GUIEventHandler>
 
@@ -93,3 +94,5 @@ private:
 };
 
 }
+
+#endif // OSGGA_LAMBDAEVENTHANDLER_INCLUDED

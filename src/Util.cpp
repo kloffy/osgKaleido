@@ -18,12 +18,12 @@ std::string format(const char *fmt, ...)
 }
 
 #ifdef OSGKALEIDO_EXCEPTIONS_ENABLED
-void throw_exception()
+void throwException()
 {
 	throw std::runtime_error(format("Error generating polyhedron data: \"%s\".", error.message));
 }
 #else
-void throw_exception()
+void throwException()
 {
 	//Do nothing. The application should call getStatus() instead.
 }

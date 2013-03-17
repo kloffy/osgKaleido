@@ -5,7 +5,11 @@
 
 #include <osg/Geometry>
 
-#include <ckaleido>
+extern "C" {
+
+typedef struct _Polyhedron Polyhedron;
+
+}
 
 namespace osgKaleido {
 
@@ -31,8 +35,8 @@ public:
 		All           = ~None,
 	};
 
-	static Faces sidesToFaces(int sides);
-	static int facesToSides(Faces faces);
+	static Faces sidesToFace(int sides);
+	static int faceToSides(Faces faces);
 
 	Polyhedron(std::string const&);
 
@@ -50,16 +54,14 @@ public:
 	bool isOneSided() const;
 	bool isHemi() const;
 
-	osg::Vec3Array* getVertices() const;
-
-	inline ::Polyhedron const* getData() const
+	inline ::Polyhedron* getData() const
 	{
 		return _data;
 	}
 
 	inline bool getStatus() const
 	{
-		return !(_data == nullptr);
+		return _data != nullptr;
 	}
 
 protected:
@@ -72,6 +74,7 @@ private:
 	::Polyhedron* _data;
 };
 
+extern OSGKALEIDO_EXPORT osg::Vec3Array* createVertices(Polyhedron const*);
 extern OSGKALEIDO_EXPORT osg::Geometry* createFaces(Polyhedron const*, Polyhedron::Faces=Polyhedron::Faces::All);
 
 } // osgKaleido
