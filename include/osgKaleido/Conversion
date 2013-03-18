@@ -35,7 +35,7 @@ struct conversion<osg::Vec4d, ::Vector>
 {
 	osg::Vec4d operator()(::Vector const& value) const
 	{
-		return osg::Vec4d(value.x, value.y, value.z, 1.0);
+		return osg::Vec4d(value.x, value.y, value.z, 0.0);
 	}
 };
 

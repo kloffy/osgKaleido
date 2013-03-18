@@ -3,7 +3,13 @@
 #include <osgKaleido/Conversion>
 #include <osgKaleido/Util>
 
+#pragma warning(push)
+#pragma warning(disable: 4250)
+
+#include <osgDB/Registry>
 #include <osgUtil/Tessellator>
+
+#pragma warning(pop)
 
 #include <ckaleido>
 
@@ -56,30 +62,30 @@ int polyhedron_ftype_sides(::Polyhedron const* P, int ftype)
 	return numerator(P->n[ftype]);
 }
 
-::Vector polyhedron_face_color(::Polyhedron const* P, int ftype)
+osg::Vec4 face_color(osgKaleido::Polyhedron::Faces faces)
 {
-	::Vector result;
+	osg::Vec4 result;
 
-	auto sides = polyhedron_ftype_sides(P, ftype);
-	auto x = sides - 2;
+	auto x = Polyhedron::faceToSides(faces) - 2;
 
-	result.x = std::max(0.25f, static_cast<float>((x >> 0) & 1));
-	result.y = std::max(0.25f, static_cast<float>((x >> 1) & 1));
-	result.z = std::max(0.25f, static_cast<float>((x >> 2) & 1));
+	result.r() = std::max(0.25f, static_cast<float>((x >> 0) & 1));
+	result.g() = std::max(0.25f, static_cast<float>((x >> 1) & 1));
+	result.b() = std::max(0.25f, static_cast<float>((x >> 2) & 1));
+	result.a() = 1.0f;
 
 	return result;
 }
 
-int polyhedron_count_faces(::Polyhedron const* P, osgKaleido::Polyhedron::Faces faces)
+std::size_t face_count(osgKaleido::Polyhedron::Faces faces, ::Polyhedron const* P)
 {
-	int result = 0;
+	std::size_t result = 0;
 	for(int n = 0; n < P->N; ++n)
 	{
-		auto sides = polyhedron_ftype_sides(P, n);
-		if(faces & Polyhedron::sidesToFace(sides))
-		{
-			result += P->m[n];
-		}
+		auto face = Polyhedron::sidesToFace(detail::polyhedron_ftype_sides(P, n));
+
+		if (!(faces & face)) continue;
+
+		result += P->m[n];
 	}
 	return result;
 }
@@ -104,7 +110,28 @@ int Polyhedron::faceToSides(Polyhedron::Faces faces)
 	return wild::fls(faces) + 3;
 }
 
+//Polyhedron::Polyhedron(): Polyhedron("#1") {}
+Polyhedron::Polyhedron(): _symbol("#1"), _data(nullptr)
+{
+	create();
+}
+
 Polyhedron::Polyhedron(std::string const& symbol): _symbol(symbol), _data(nullptr)
+{
+	create();
+}
+
+Polyhedron::Polyhedron(Polyhedron const& rhs, osg::CopyOp const& op): _symbol(rhs._symbol), _data(nullptr)
+{
+	create();
+}
+
+Polyhedron::~Polyhedron()
+{
+	destroy();
+}
+
+void Polyhedron::create()
 {
 	OSG_DEBUG << "Create Polyhedron" << std::endl;
 
@@ -115,17 +142,29 @@ Polyhedron::Polyhedron(std::string const& symbol): _symbol(symbol), _data(nullpt
 	checkStatusAndThrowException(*this);
 }
 
-Polyhedron::~Polyhedron()
+void Polyhedron::destroy()
 {
 	OSG_DEBUG << "Delete Polyhedron" << std::endl;
 
-	polyfree(_data);
+	if (_data != nullptr)
+	{
+		polyfree(_data);
+	}
 }
 
 std::string const& Polyhedron::getSymbol() const
 {
 	return _symbol;
 }
+
+void Polyhedron::setSymbol(std::string const& symbol)
+{
+	destroy();
+
+	_symbol = symbol;
+
+	create();
+} 
 
 std::string Polyhedron::getName() const
 {
@@ -159,7 +198,7 @@ std::size_t Polyhedron::getFaceCount() const
 
 std::size_t Polyhedron::getFaceCount(Faces faces) const
 {
-	return detail::polyhedron_count_faces(_data, faces);
+	return detail::face_count(faces, _data);
 }
 
 bool Polyhedron::isOneSided() const
@@ -174,44 +213,36 @@ bool Polyhedron::isHemi() const
 
 osg::Vec3Array* createVertices(Polyhedron const* polyhedron)
 {
-	auto P = polyhedron->getData();
-
 	osg::ref_ptr<osg::Vec3Array> result = new osg::Vec3Array;
+
+	auto P = polyhedron->getData();
 	for (int v = 0; v < P->V; ++v)
 	{
 		result->push_back(wild::conversion_cast<osg::Vec3d>(P->v[v]));
 	}
+
 	return result.release();
 }
 
-osg::Geometry* createFaces(Polyhedron const* polyhedron, Polyhedron::Faces faces)
+void createFaces(osg::Geometry* result, Polyhedron const* polyhedron, Polyhedron::Faces faces)
 {
 	osgUtil::Tessellator tessellator;
 	tessellator.setTessellationType(osgUtil::Tessellator::TESS_TYPE_POLYGONS);
 	tessellator.setWindingType(osgUtil::Tessellator::TESS_WINDING_NONZERO);
 
-	osg::ref_ptr<osg::Geometry> result = new osg::Geometry;
-
 	osg::Vec3Array* vertices = new osg::Vec3Array;
 	osg::Vec3Array* normals = new osg::Vec3Array;
 	osg::Vec4Array* colors = new osg::Vec4Array;
 
-	result->setVertexArray(vertices);
-
-	result->setNormalArray(normals);
-	result->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
-
-	result->setColorArray(colors);
-	result->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+	result->removePrimitiveSet(0, result->getNumPrimitiveSets());
 
 	auto P = polyhedron->getData();
 
 	for (int f = 0; f < P->F; f++)
 	{
 		auto ftype = P->ftype[f];
-		auto sides = detail::polyhedron_ftype_sides(P, ftype);
-		auto face = Polyhedron::sidesToFace(sides);
-
+		auto face = Polyhedron::sidesToFace(detail::polyhedron_ftype_sides(P, ftype));
+		
 		if (!(faces & face)) continue;
 
 		auto size = vertices->size();
@@ -234,12 +265,14 @@ osg::Geometry* createFaces(Polyhedron const* polyhedron, Polyhedron::Faces faces
 		auto count = vertices->size() - size;
 		result->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, size, count));
 
-		auto a = vertices->at(vertices->size()-1);
-		auto b = vertices->at(vertices->size()-2);
-		auto c = vertices->at(vertices->size()-3);
+		auto const& a = vertices->at(vertices->size()-1);
+		auto const& b = vertices->at(vertices->size()-2);
+		auto const& c = vertices->at(vertices->size()-3);
 		auto normal = (a-b) ^ (c-b);
 		normal.normalize();
-		auto color = wild::conversion_cast<osg::Vec4d>(detail::polyhedron_face_color(P, ftype));
+
+		auto color = detail::face_color(face);
+		
 		for (auto i=0u; i < count; ++i)
 		{
 			normals->push_back(normal);
@@ -247,9 +280,25 @@ osg::Geometry* createFaces(Polyhedron const* polyhedron, Polyhedron::Faces faces
 		}
 	}
 
-	tessellator.retessellatePolygons(*result);
+	result->setVertexArray(vertices);
 
-	return result.release();
+	result->setNormalArray(normals);
+	result->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
+
+	result->setColorArray(colors);
+	result->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+
+	tessellator.retessellatePolygons(*result);
+}
+
+PolyhedronGeometry::PolyhedronGeometry(Polyhedron* polyhedron): _polyhedron(polyhedron)
+{
+	osgKaleido::createFaces(this, _polyhedron);
 }
 
 } // osgKaleido
+
+REGISTER_OBJECT_WRAPPER(Polyhedron, new osgKaleido::Polyhedron, osgKaleido::Polyhedron, "osg::Object osgKaleido::Polyhedron")
+{
+	ADD_STRING_SERIALIZER(Symbol, "#1");
+}

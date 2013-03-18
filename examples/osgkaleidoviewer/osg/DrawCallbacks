@@ -1,0 +1,52 @@
+#ifndef OSG_DRAWCALLBACKS_INCLUDED
+#define OSG_DRAWCALLBACKS_INCLUDED
+
+#include <osg/Drawable>
+
+namespace osg {
+
+class UseVertexAttributeAliasing: public osg::Drawable::DrawCallback
+{
+public:
+	UseVertexAttributeAliasing(bool value): _value(value)
+	{
+	}
+
+private:
+	virtual void drawImplementation(osg::RenderInfo& renderInfo,const osg::Drawable* drawable) const
+	{
+		auto state = renderInfo.getState();
+		auto oldValue = state->getUseVertexAttributeAliasing();
+
+		state->setUseVertexAttributeAliasing(_value);
+		drawable->drawImplementation(renderInfo);
+		state->setUseVertexAttributeAliasing(oldValue);
+	}
+
+	bool _value;
+};
+
+class UseModelViewAndProjectionUniforms: public osg::Drawable::DrawCallback
+{
+public:
+	UseModelViewAndProjectionUniforms(bool value): _value(value)
+	{
+	}
+
+private:
+	virtual void drawImplementation(osg::RenderInfo& renderInfo,const osg::Drawable* drawable) const
+	{
+		auto state = renderInfo.getState();
+		auto oldValue = state->getUseModelViewAndProjectionUniforms();
+
+		state->setUseModelViewAndProjectionUniforms(_value);
+		drawable->drawImplementation(renderInfo);
+		state->setUseModelViewAndProjectionUniforms(oldValue);
+	}
+
+	bool _value;
+};
+
+}
+
+#endif // OSG_DRAWCALLBACKS_INCLUDED

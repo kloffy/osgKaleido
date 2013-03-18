@@ -13,6 +13,8 @@ TARGET_LINK_LIBRARIES(osgKaleidoViewer
 	optimized ${OSGDB_LIBRARY}
 	debug     ${OSGGA_LIBRARY_DEBUG}
 	optimized ${OSGGA_LIBRARY}
+	debug     ${OSGTEXT_LIBRARY_DEBUG}
+	optimized ${OSGTEXT_LIBRARY}
 	debug     ${OSGVIEWER_LIBRARY_DEBUG}
 	optimized ${OSGVIEWER_LIBRARY}
 	osgKaleido
