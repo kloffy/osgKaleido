@@ -118,7 +118,7 @@ void updateVertexGeode(osg::ref_ptr<osg::Geode>& geode, osg::ref_ptr<osgKaleido:
 void updateFaceGeode(osg::ref_ptr<osg::Geode>& geode, osg::ref_ptr<osgKaleido::Polyhedron>& polyhedron, osg::ref_ptr<osg::Geometry>& geometry, int faces)
 {
 	if (geometry) geode->removeDrawable(geometry);
-	geometry = new osg::Geometry;
+	//geometry = new osg::Geometry;
 	osgKaleido::createFaces(geometry, polyhedron, static_cast<osgKaleido::Polyhedron::Faces>(faces));
 	geometry->setUseVertexBufferObjects(true);
 	if (geometry) geode->addDrawable(geometry);
@@ -193,6 +193,17 @@ int main(int argc, char** argv)
 	//viewer.setRunMaxFrameRate(0.0);
 	viewer.realize();
 
+	osgViewer::Viewer::Windows windows;
+	viewer.getWindows(windows);
+
+	for (auto& window: windows)
+	{
+		window->setWindowName("osgKaleidoViewer");
+		auto state = window->getState();
+		state->setUseModelViewAndProjectionUniforms(true);
+		state->setUseVertexAttributeAliasing(true);
+	}
+
 	osg::ref_ptr<osg::Group> root = new osg::Group;
 	osg::ref_ptr<osg::Geode> tgeode = new osg::Geode;
 	osg::ref_ptr<osg::Geode> vgeode = createVertexGeode();
@@ -214,9 +225,10 @@ int main(int argc, char** argv)
 	text->setAxisAlignment(osgText::Text::SCREEN);
 	text->setAlignment(osgText::Text::CENTER_TOP);
 	text->setFont("/fonts/arial.ttf");
-	text->setCharacterSize(25);
+	text->setCharacterSize(16.0f);
+	text->setLineSpacing(0.25f);
 	text->setPosition(osg::Vec3(windowWidth/2.0f, windowHeight - 10.0f, -1.5f));
-	
+
 	osg::ref_ptr<osg::UseVertexAttributeAliasing> vaa = new osg::UseVertexAttributeAliasing(false);
 	text->setDrawCallback(vaa);
 
@@ -241,17 +253,13 @@ int main(int argc, char** argv)
 	vgeometry = osg::createTexturedQuadGeometry(corner, osg::X_AXIS * extent.x(), osg::Y_AXIS * extent.y());
 	vgeometry->setUseVertexBufferObjects(true);
 */
-	auto state = viewer.getCamera()->getGraphicsContext()->getState();
-	state->setUseModelViewAndProjectionUniforms(true);
-	state->setUseVertexAttributeAliasing(true);
-	
 	osg::ref_ptr<osgGA::LambdaEventHandler> eventHandler = new osgGA::LambdaEventHandler;
 	
 	int faces = osgKaleido::Polyhedron::All;
 	int index = 26;
 
 	createPolyhedron(polyhedron, index);
-	text->setText(polyhedron->getName());
+	text->setText(polyhedron->getName() + "\n" + polyhedron->getWythoffSymbol());
 
 	osgKaleido::createFaces(vgeometry, polyhedron);
 	osg::Vec3f v(1.0f, 1.0f, 1.0f);
@@ -288,7 +296,7 @@ int main(int argc, char** argv)
 			faces = osgKaleido::Polyhedron::All;
 			index++;
 			createPolyhedron(polyhedron, index);
-			text->setText(polyhedron->getName());
+			text->setText(polyhedron->getName() + "\n" + polyhedron->getWythoffSymbol());
 
 			updateVertexGeode(vgeode, polyhedron, vgeometry);
 			updateFaceGeode(fgeode, polyhedron, fgeometry, faces);
@@ -299,7 +307,7 @@ int main(int argc, char** argv)
 			faces = osgKaleido::Polyhedron::All;
 			index--;
 			createPolyhedron(polyhedron, index);
-			text->setText(polyhedron->getName());
+			text->setText(polyhedron->getName() + "\n" + polyhedron->getWythoffSymbol());
 
 			updateVertexGeode(vgeode, polyhedron, vgeometry);
 			updateFaceGeode(fgeode, polyhedron, fgeometry, faces);
