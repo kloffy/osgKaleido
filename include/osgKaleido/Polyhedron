@@ -78,22 +78,20 @@ private:
 	void destroy();
 
 	std::string _symbol;
-
 	::Polyhedron* _data;
 };
 
-class OSGKALEIDO_EXPORT PolyhedronGeometry: public osg::Geometry
-{
-public:
-	PolyhedronGeometry(Polyhedron* polyhedron);
+typedef std::vector<osg::ref_ptr<osg::UShortArray>> VertexIndexArrays;
 
-private:
-	osg::ref_ptr<Polyhedron> _polyhedron;
-};
+extern OSGKALEIDO_EXPORT osg::Vec3Array* createVertexArray(Polyhedron const&);
+extern OSGKALEIDO_EXPORT osg::UShortArray* createVertexIndexArray(Polyhedron const&, int);
+extern OSGKALEIDO_EXPORT VertexIndexArrays createVertexIndexArrays(Polyhedron const&, Polyhedron::Faces = Polyhedron::Faces::All);
 
-extern OSGKALEIDO_EXPORT osg::Vec3Array* createVertices(Polyhedron const*);
-extern OSGKALEIDO_EXPORT void createFaces(osg::Geometry*, Polyhedron const*, Polyhedron::Faces=Polyhedron::Faces::All);
-
+extern OSGKALEIDO_EXPORT osg::Geometry* createBasicGeometry(Polyhedron const&, Polyhedron::Faces = Polyhedron::Faces::All);
+extern OSGKALEIDO_EXPORT osg::Geometry* createGeometry(Polyhedron const&, Polyhedron::Faces = Polyhedron::Faces::All);
+/*
+extern OSGKALEIDO_EXPORT void createFaces(osg::Geometry*, Polyhedron const*, Polyhedron::Faces = Polyhedron::Faces::All);
+*/
 } // osgKaleido
 
 #endif // OSGKALEIDO_POLYHEDRON_INCLUDED

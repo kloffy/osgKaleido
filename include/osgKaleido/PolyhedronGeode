@@ -1,0 +1,66 @@
+#ifndef OSGKALEIDO_POLYHEDRONGEODE_INCLUDED
+#define OSGKALEIDO_POLYHEDRONGEODE_INCLUDED
+
+#include <osgKaleido/Export>
+#include <osgKaleido/Polyhedron>
+
+#include <osg/Geode>
+
+namespace osgKaleido {
+
+class OSGKALEIDO_EXPORT PolyhedronGeode: public osg::Geode
+{
+public:
+	enum FaceMask
+	{
+		None          = 0,
+		Triangular    = 1 << 0,
+		Quadrilateral = 1 << 1,
+		Pentagonal    = 1 << 2,
+		Hexagonal     = 1 << 3,
+		Heptagonal    = 1 << 4,
+		Octagonal     = 1 << 5,
+		Nonagonal     = 1 << 6,
+		Decagonal     = 1 << 7,
+		Hendecagonal  = 1 << 8,
+		Dodecagonal   = 1 << 9,
+		All           = ~None,
+	};
+
+	PolyhedronGeode();
+	PolyhedronGeode(std::string const&);
+	PolyhedronGeode(PolyhedronGeode const&, osg::CopyOp const& = osg::CopyOp::SHALLOW_COPY);
+
+	std::string const& getSymbol() const;
+	void setSymbol(std::string const&);
+
+	FaceMask getFaceMask() const;
+	void setFaceMask(FaceMask);
+	
+	inline void setPolyhedron(Polyhedron* polyhedron) { _polyhedron = polyhedron; }
+	inline Polyhedron* getPolyhedron() { return _polyhedron.get(); }
+	inline Polyhedron const* getPolyhedron() const { return _polyhedron.get(); }
+
+	inline void dirty()
+	{
+		_dirty = true;
+	}
+
+	virtual void traverse(osg::NodeVisitor&) override;
+
+	META_Object(osgKaleido, PolyhedronGeode);
+
+private:
+	void generate();
+
+	bool _dirty;
+
+	osg::ref_ptr<Polyhedron> _polyhedron;
+	FaceMask _faces;
+
+	osg::ref_ptr<osg::Geometry> _geometry;
+};
+
+} // osgKaleido
+
+#endif // OSGKALEIDO_POLYHEDRON_INCLUDED

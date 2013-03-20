@@ -63,6 +63,7 @@ SET(KALEIDO_HEADER_FILES
 
 SET(SRC_FILES
 	src/Polyhedron.cpp
+	src/PolyhedronGeode.cpp
 	src/Util.cpp
 )
 
@@ -74,6 +75,7 @@ SET(PRIVATE_HEADER_FILES
 SET(PUBLIC_HEADER_FILES
 	include/osgKaleido/Export
 	include/osgKaleido/Polyhedron
+	include/osgKaleido/PolyhedronGeode
 )
 
 SET(HEADER_FILES

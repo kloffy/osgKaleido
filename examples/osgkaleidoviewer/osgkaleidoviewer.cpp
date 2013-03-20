@@ -15,24 +15,10 @@
 
 #pragma warning(pop)
 
-#include <osgKaleido/Polyhedron>
+#include <osgKaleido/PolyhedronGeode>
 
 #include <wild/conversion.hpp>
 #include <wild/math.hpp>
-#include <wild/bits.hpp>
-
-void createPolyhedron(osg::ref_ptr<osgKaleido::Polyhedron>& polyhedron, int index)
-{
-	auto symbol = "#" + wild::conversion_cast<std::string>(wild::mod(index, 80) + 1);
-
-	polyhedron->setSymbol(symbol);
-
-	OSG_INFO << polyhedron->getName() << " (" << polyhedron->getDualName() << "*)" << std::endl;
-	OSG_INFO << polyhedron->getWythoffSymbol() << std::endl;
-	OSG_INFO << polyhedron->getVertexConfiguration() << std::endl;
-	OSG_INFO << polyhedron->getVertexCount() << std::endl;
-	OSG_INFO << polyhedron->getFaceCount() << std::endl;
-}
 
 osg::Uniform* createUniformArray(std::string const& name, unsigned int numElements, osg::Vec3Array* data, osg::Vec3 const& _default)
 {
@@ -60,24 +46,8 @@ void makeInstanced(osg::ref_ptr<osg::Geometry>& geometry, int nInstances)
 	}
 }
 
-osg::Geode* createVertexGeode()
+void setupPolyhedronGeode(osg::Geode& geode)
 {
-	osg::ref_ptr<osg::Geode> result = new osg::Geode;
-
-	osg::ref_ptr<osg::Program> program = new osg::Program;
-	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, "data/instanced_vs.glsl"));
-	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/instanced_fs.glsl"));
-
-	auto stateSet = result->getOrCreateStateSet();
-	stateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
-
-	return result.release();
-}
-
-osg::Geode* createFaceGeode()
-{
-	osg::ref_ptr<osg::Geode> result = new osg::Geode;
-
 	osg::ref_ptr<osg::Program> program = new osg::Program;
 	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, "data/diffuse_directional2_vs.glsl"));
 	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/diffuse_directional2_fs.glsl"));
@@ -85,17 +55,41 @@ osg::Geode* createFaceGeode()
 	osg::Vec3f lightDir(0.0f, 0.0f, 1.0f);
     lightDir.normalize();
 
-	auto stateSet = result->getOrCreateStateSet();
+	auto stateSet = geode.getOrCreateStateSet();
 	stateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
 	stateSet->addUniform(new osg::Uniform("ecLightDirection", lightDir));
 	stateSet->addUniform(new osg::Uniform("lightColor", osg::Vec3(1.0f, 1.0f, 1.0f)));
-
-	return result.release();
 }
 
-void updateVertexGeode(osg::ref_ptr<osg::Geode>& geode, osg::ref_ptr<osgKaleido::Polyhedron>& polyhedron, osg::ref_ptr<osg::Geometry>& geometry)
+void updatePolyhedronGeode(osg::ref_ptr<osgKaleido::PolyhedronGeode>& pgeode, int index, int faces)
 {
-	osg::ref_ptr<osg::Vec3Array> vertices = osgKaleido::createVertices(polyhedron);
+	auto symbol = "#" + wild::conversion_cast<std::string>(wild::mod(index, 80) + 1);
+
+	pgeode->setSymbol(symbol);
+	pgeode->setFaceMask(static_cast<osgKaleido::PolyhedronGeode::FaceMask>(faces));
+
+	auto const& polyhedron = pgeode->getPolyhedron();
+
+	OSG_INFO << polyhedron->getName() << " (" << polyhedron->getDualName() << "*)" << std::endl;
+	OSG_INFO << polyhedron->getWythoffSymbol() << std::endl;
+	OSG_INFO << polyhedron->getVertexConfiguration() << std::endl;
+	OSG_INFO << polyhedron->getVertexCount() << std::endl;
+	OSG_INFO << polyhedron->getFaceCount() << std::endl;
+}
+
+void setupVertexGeode(osg::Geode& geode)
+{
+	osg::ref_ptr<osg::Program> program = new osg::Program;
+	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, "data/instanced_vs.glsl"));
+	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/instanced_fs.glsl"));
+
+	auto stateSet = geode.getOrCreateStateSet();
+	stateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
+}
+
+void updateVertexGeode(osg::ref_ptr<osg::Geode>& geode, osgKaleido::Polyhedron const& polyhedron, osg::ref_ptr<osg::Geometry>& geometry)
+{
+	osg::ref_ptr<osg::Vec3Array> vertices = osgKaleido::createVertexArray(polyhedron);
 
 	//OSG_WARN << vertices->size() << std::endl;
 
@@ -113,15 +107,6 @@ void updateVertexGeode(osg::ref_ptr<osg::Geode>& geode, osg::ref_ptr<osgKaleido:
 	geometry->setInitialBound(bb);
 
 	geode->addDrawable(geometry);
-}
-
-void updateFaceGeode(osg::ref_ptr<osg::Geode>& geode, osg::ref_ptr<osgKaleido::Polyhedron>& polyhedron, osg::ref_ptr<osg::Geometry>& geometry, int faces)
-{
-	if (geometry) geode->removeDrawable(geometry);
-	//geometry = new osg::Geometry;
-	osgKaleido::createFaces(geometry, polyhedron, static_cast<osgKaleido::Polyhedron::Faces>(faces));
-	geometry->setUseVertexBufferObjects(true);
-	if (geometry) geode->addDrawable(geometry);
 }
 
 osg::Matrix3 inverseTranspose(osg::Matrixf const& m)
@@ -154,8 +139,8 @@ void transform(osg::ref_ptr<osg::Geometry>& geometry, osg::Matrixf const& matrix
 int main(int argc, char** argv)
 {
 	//osg::ref_ptr<osg::Node> test = new osg::Node;
-	//osg::ref_ptr<osgKaleido::Polyhedron> test = new osgKaleido::Polyhedron("#3");
-	
+	//osg::ref_ptr<osgKaleido::PolyhedronGeode> test = new osgKaleido::PolyhedronGeode("#3");
+
 	//std::ostringstream sstream;
 	//osg::ref_ptr<osgDB::Options> options = new osgDB::Options("Ascii");
 	//osgDB::ReaderWriter::WriteResult wr = osgDB::Registry::instance()->getReaderWriterForExtension("osgt")->writeObject(*test, sstream, options);
@@ -206,13 +191,13 @@ int main(int argc, char** argv)
 
 	osg::ref_ptr<osg::Group> root = new osg::Group;
 	osg::ref_ptr<osg::Geode> tgeode = new osg::Geode;
-	osg::ref_ptr<osg::Geode> vgeode = createVertexGeode();
-	osg::ref_ptr<osg::Geode> fgeode = createFaceGeode();
-	
-	osg::ref_ptr<osg::Geometry> vgeometry = new osg::Geometry;
-	osg::ref_ptr<osg::Geometry> fgeometry = new osg::Geometry;
-	vgeometry->setUseVertexBufferObjects(true);
-	fgeometry->setUseVertexBufferObjects(true);
+
+	osg::ref_ptr<osgKaleido::PolyhedronGeode> pgeode = new osgKaleido::PolyhedronGeode("#27");
+	pgeode->setDataVariance(osg::Object::DYNAMIC);
+	setupPolyhedronGeode(*pgeode);
+
+	osg::ref_ptr<osg::Geode> vgeode = new osg::Geode;
+	setupVertexGeode(*vgeode);
 
 	osg::Projection* projection = new osg::Projection;
 	projection->setMatrix(osg::Matrix::ortho2D(0, windowWidth, 0, windowHeight));
@@ -240,8 +225,6 @@ int main(int argc, char** argv)
 	projection->addChild(modelView);
 	root->addChild(projection);
 
-	osg::ref_ptr<osgKaleido::Polyhedron> polyhedron = new osgKaleido::Polyhedron;
-
 	//osg::ref_ptr<osg::LightModel> lightModel = new osg::LightModel;
 	//lightModel->setTwoSided(true);
 
@@ -258,17 +241,17 @@ int main(int argc, char** argv)
 	int faces = osgKaleido::Polyhedron::All;
 	int index = 26;
 
-	createPolyhedron(polyhedron, index);
-	text->setText(polyhedron->getName() + "\n" + polyhedron->getWythoffSymbol());
+	osg::ref_ptr<osg::Geometry> vgeometry = osgKaleido::createGeometry(*pgeode->getPolyhedron());
+	vgeometry->setUseVertexBufferObjects(true);
 
-	osgKaleido::createFaces(vgeometry, polyhedron);
 	osg::Vec3f v(1.0f, 1.0f, 1.0f);
 	osg::Matrixf m = osg::Matrixf::scale(v * 0.125f * 0.25f);
 	transform(vgeometry, m);
-	vgeometry->setUseVertexBufferObjects(true);
 
-	updateVertexGeode(vgeode, polyhedron, vgeometry);
-	updateFaceGeode(fgeode, polyhedron, fgeometry, faces);
+	updatePolyhedronGeode(pgeode, index, faces);
+	text->setText(pgeode->getPolyhedron()->getName() + "\n" + pgeode->getPolyhedron()->getWythoffSymbol());
+
+	updateVertexGeode(vgeode, *pgeode->getPolyhedron(), vgeometry);
 
 	eventHandler->onKeyDown([&](const osgGA::GUIEventAdapter& ea){
 		auto key = ea.getKey();
@@ -276,7 +259,7 @@ int main(int argc, char** argv)
 		if (0 <= num && num <= 9)
 		{
 			faces ^= osgKaleido::Polyhedron::sidesToFace(wild::mod(num-1, 10) + 3);
-			updateFaceGeode(fgeode, polyhedron, fgeometry, faces);
+			updatePolyhedronGeode(pgeode, index, faces);
 			return true;
 		}
 		switch (key)
@@ -295,22 +278,20 @@ int main(int argc, char** argv)
 		{
 			faces = osgKaleido::Polyhedron::All;
 			index++;
-			createPolyhedron(polyhedron, index);
-			text->setText(polyhedron->getName() + "\n" + polyhedron->getWythoffSymbol());
+			updatePolyhedronGeode(pgeode, index, faces);
+			text->setText(pgeode->getPolyhedron()->getName() + "\n" + pgeode->getPolyhedron()->getWythoffSymbol());
 
-			updateVertexGeode(vgeode, polyhedron, vgeometry);
-			updateFaceGeode(fgeode, polyhedron, fgeometry, faces);
+			updateVertexGeode(vgeode, *pgeode->getPolyhedron(), vgeometry);
 			return true;
 		}
 		case osgGA::GUIEventAdapter::KEY_Left:
 		{
 			faces = osgKaleido::Polyhedron::All;
 			index--;
-			createPolyhedron(polyhedron, index);
-			text->setText(polyhedron->getName() + "\n" + polyhedron->getWythoffSymbol());
+			updatePolyhedronGeode(pgeode, index, faces);
+			text->setText(pgeode->getPolyhedron()->getName() + "\n" + pgeode->getPolyhedron()->getWythoffSymbol());
 
-			updateVertexGeode(vgeode, polyhedron, vgeometry);
-			updateFaceGeode(fgeode, polyhedron, fgeometry, faces);
+			updateVertexGeode(vgeode, *pgeode->getPolyhedron(), vgeometry);
 			return true;
 		}
 		default:
@@ -319,7 +300,7 @@ int main(int argc, char** argv)
 	});
 
 	root->addChild(vgeode);
-	root->addChild(fgeode);
+	root->addChild(pgeode);
 
 	viewer.setSceneData(root.get());
 	viewer.setCameraManipulator(new osgGA::TrackballManipulator);

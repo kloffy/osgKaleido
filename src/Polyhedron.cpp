@@ -121,7 +121,7 @@ Polyhedron::Polyhedron(std::string const& symbol): _symbol(symbol), _data(nullpt
 	create();
 }
 
-Polyhedron::Polyhedron(Polyhedron const& rhs, osg::CopyOp const& op): _symbol(rhs._symbol), _data(nullptr)
+Polyhedron::Polyhedron(Polyhedron const& other, osg::CopyOp const& op): _symbol(other._symbol), _data(nullptr)
 {
 	create();
 }
@@ -149,6 +149,7 @@ void Polyhedron::destroy()
 	if (_data != nullptr)
 	{
 		polyfree(_data);
+		_data = nullptr;
 	}
 }
 
@@ -211,11 +212,11 @@ bool Polyhedron::isHemi() const
 	return _data->hemi != 0;
 }
 
-osg::Vec3Array* createVertices(Polyhedron const* polyhedron)
+osg::Vec3Array* createVertexArray(Polyhedron const& polyhedron)
 {
 	osg::ref_ptr<osg::Vec3Array> result = new osg::Vec3Array;
 
-	auto P = polyhedron->getData();
+	auto P = polyhedron.getData();
 	for (int v = 0; v < P->V; ++v)
 	{
 		result->push_back(wild::conversion_cast<osg::Vec3d>(P->v[v]));
@@ -224,6 +225,138 @@ osg::Vec3Array* createVertices(Polyhedron const* polyhedron)
 	return result.release();
 }
 
+osg::UShortArray* createVertexIndexArray(Polyhedron const& polyhedron, int f)
+{
+	osg::ref_ptr<osg::UShortArray> result = new osg::UShortArray;
+
+	auto P = polyhedron.getData();
+
+	// Using this as an offset into the adjacency matrix (mostly) ensures correct winding.
+	int magic = 0;
+	// fv, pv, cv, nv
+	int fv = detail::polyhedron_face_first_vertex(P, f, magic);
+	int nv = fv, pv = fv;
+	do
+	{
+		int cv = nv;
+		result->push_back(cv);
+		nv = detail::polyhedron_face_next_vertex(P, f, magic, cv, pv);
+		pv = cv;
+		if (fv == nv) break;
+	}
+	while (true);
+
+	return result.release();
+}
+
+VertexIndexArrays createVertexIndexArrays(Polyhedron const& polyhedron, Polyhedron::Faces faces)
+{
+	VertexIndexArrays result;
+
+	auto P = polyhedron.getData();
+	for (int f = 0; f < P->F; f++)
+	{
+		auto ftype = P->ftype[f];
+		auto face = Polyhedron::sidesToFace(detail::polyhedron_ftype_sides(P, ftype));
+		
+		if (!(faces & face)) continue;
+
+		result.push_back(createVertexIndexArray(polyhedron, f));
+	}
+
+	return result;
+}
+
+osg::Vec3 calculateNormal(osg::Vec3Array* vertices, osg::UShortArray* polygon)
+{
+	assert(polygon && polygon->size() >= 3);
+
+	auto const& a = vertices->at(polygon->at(2));
+	auto const& b = vertices->at(polygon->at(1));
+	auto const& c = vertices->at(polygon->at(0));
+
+	auto normal = (a-b) ^ (c-b);
+	normal.normalize();
+
+	return normal;
+}
+
+osg::Vec4 calculateColor(osg::Vec3Array* vertices, osg::UShortArray* polygon)
+{
+	assert(polygon && polygon->size() >= 3);
+
+	osg::Vec4 result;
+
+	auto x = polygon->size() - 2;
+
+	result.r() = std::max(0.25f, static_cast<float>((x >> 0) & 1));
+	result.g() = std::max(0.25f, static_cast<float>((x >> 1) & 1));
+	result.b() = std::max(0.25f, static_cast<float>((x >> 2) & 1));
+	result.a() = 1.0f;
+
+	return result;
+}
+
+osg::Geometry* createBasicGeometry(Polyhedron const& polyhedron, Polyhedron::Faces faces)
+{
+	osg::ref_ptr<osg::Geometry> result = new osg::Geometry;
+
+	osg::ref_ptr<osg::Vec3Array> vertices = createVertexArray(polyhedron);
+	VertexIndexArrays polygons = createVertexIndexArrays(polyhedron, faces);
+
+	result->setVertexArray(vertices);
+
+	for (auto const& polygon: polygons)
+	{
+		result->addPrimitiveSet(new osg::DrawElementsUShort(osg::PrimitiveSet::POLYGON, polygon->size(), &polygon->front()));
+	}
+
+	return result.release();
+}
+
+osg::Geometry* createGeometry(Polyhedron const& polyhedron, Polyhedron::Faces faces)
+{
+	osg::ref_ptr<osg::Geometry> result = new osg::Geometry;
+
+	osg::ref_ptr<osg::Vec3Array> vertices = createVertexArray(polyhedron);
+	VertexIndexArrays polygons = createVertexIndexArrays(polyhedron, faces);
+	
+	osg::ref_ptr<osg::Vec3Array> _vertices = new osg::Vec3Array;
+	osg::ref_ptr<osg::Vec3Array> _normals = new osg::Vec3Array;
+	osg::ref_ptr<osg::Vec4Array> _colors = new osg::Vec4Array;
+
+	for (auto const& polygon: polygons)
+	{
+		assert(polygon && polygon->size() >= 3);
+
+		auto first = _vertices->size();
+		auto count = polygon->size();
+
+		auto normal = calculateNormal(vertices, polygon);
+		auto color = calculateColor(vertices, polygon);
+
+		for (auto i = 0u; i < polygon->size(); ++i)
+		{
+			auto vertex = vertices->at(polygon->at(i));
+			_vertices->push_back(vertex);
+			_normals->push_back(normal);
+			_colors->push_back(color);
+		}
+
+		result->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, first, count));
+	}
+
+	result->setVertexArray(_vertices);
+
+	result->setNormalArray(_normals);
+	result->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
+
+	result->setColorArray(_colors);
+	result->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+
+	return result.release();
+}
+/*
 void createFaces(osg::Geometry* result, Polyhedron const* polyhedron, Polyhedron::Faces faces)
 {
 	osgUtil::Tessellator tessellator;
@@ -290,11 +423,7 @@ void createFaces(osg::Geometry* result, Polyhedron const* polyhedron, Polyhedron
 
 	tessellator.retessellatePolygons(*result);
 }
-
-PolyhedronGeometry::PolyhedronGeometry(Polyhedron* polyhedron): _polyhedron(polyhedron)
-{
-	osgKaleido::createFaces(this, _polyhedron);
-}
+*/
 
 } // osgKaleido
 
