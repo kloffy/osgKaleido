@@ -89,7 +89,7 @@ void PolyhedronGeode::update(osg::NodeVisitor* nv)
 	tessellator.setTessellationType(osgUtil::Tessellator::TESS_TYPE_POLYGONS);
 	tessellator.setWindingType(osgUtil::Tessellator::TESS_WINDING_NONZERO);
 
-	_geometry = createGeometry(*_polyhedron, static_cast<osgKaleido::PolyhedronGeode::FaceMask>(_faces));
+	_geometry = createGeometry(*_polyhedron, _faces);
 
 	//_geometry->dirtyBound();
 	//_geometry->dirtyDisplayList();

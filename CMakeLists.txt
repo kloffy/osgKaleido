@@ -116,6 +116,7 @@ TARGET_LINK_LIBRARIES(osgKaleido
 	kaleido
 )
 
+ADD_SUBDIRECTORY(examples/osgkaleidosimple)
 ADD_SUBDIRECTORY(examples/osgkaleidoviewer)
 
 INSTALL(TARGETS osgKaleido

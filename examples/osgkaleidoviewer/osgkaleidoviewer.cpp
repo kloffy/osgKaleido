@@ -59,6 +59,8 @@ void setupPolyhedronGeode(osg::Geode& geode)
 	stateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
 	stateSet->addUniform(new osg::Uniform("ecLightDirection", lightDir));
 	stateSet->addUniform(new osg::Uniform("lightColor", osg::Vec3(1.0f, 1.0f, 1.0f)));
+
+	geode.setDataVariance(osg::Object::DYNAMIC);
 }
 
 void updatePolyhedronGeode(osg::ref_ptr<osgKaleido::PolyhedronGeode>& pgeode, int index, int faces)
@@ -90,6 +92,8 @@ void setupVertexGeode(osg::Geode& geode)
 	stateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
 	stateSet->addUniform(new osg::Uniform("ecLightDirection", lightDir));
 	stateSet->addUniform(new osg::Uniform("lightColor", osg::Vec3(1.0f, 1.0f, 1.0f)));
+
+	geode.setDataVariance(osg::Object::DYNAMIC);
 }
 
 void updateVertexGeode(osg::ref_ptr<osg::Geode>& geode, osgKaleido::Polyhedron const& polyhedron, osg::ref_ptr<osg::Geometry>& geometry)
@@ -196,7 +200,6 @@ int main(int argc, char** argv)
 	osg::ref_ptr<osg::Geode> tgeode = new osg::Geode;
 
 	osg::ref_ptr<osgKaleido::PolyhedronGeode> pgeode = new osgKaleido::PolyhedronGeode("#27");
-	pgeode->setDataVariance(osg::Object::DYNAMIC);
 	setupPolyhedronGeode(*pgeode);
 
 	osg::ref_ptr<osg::Geode> vgeode = new osg::Geode;
@@ -221,7 +224,8 @@ int main(int argc, char** argv)
 	text->setDrawCallback(vaa);
 
 	auto stateSet = tgeode->getOrCreateStateSet();
-	stateSet->setRenderBinDetails(11, "RenderBin");
+	stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+	stateSet->setRenderBinDetails(15, "DepthSortedBin", osg::StateSet::OVERRIDE_RENDERBIN_DETAILS);
 
 	tgeode->addDrawable(text);
 	modelView->addChild(tgeode);
