@@ -53,7 +53,7 @@ void setupPolyhedronGeode(osg::Geode& geode)
 	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/diffuse_directional2_fs.glsl"));
 
 	osg::Vec3f lightDir(0.0f, 0.0f, 1.0f);
-    lightDir.normalize();
+	lightDir.normalize();
 
 	auto stateSet = geode.getOrCreateStateSet();
 	stateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
@@ -80,18 +80,21 @@ void updatePolyhedronGeode(osg::ref_ptr<osgKaleido::PolyhedronGeode>& pgeode, in
 void setupVertexGeode(osg::Geode& geode)
 {
 	osg::ref_ptr<osg::Program> program = new osg::Program;
-	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, "data/instanced_vs.glsl"));
-	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/instanced_fs.glsl"));
+	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, "data/diffuse_billboard_instanced_vs.glsl"));
+	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/diffuse_billboard_instanced_fs.glsl"));
+
+	osg::Vec3f lightDir(1.0f, 1.0f, 1.0f);
+	lightDir.normalize();
 
 	auto stateSet = geode.getOrCreateStateSet();
 	stateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
+	stateSet->addUniform(new osg::Uniform("ecLightDirection", lightDir));
+	stateSet->addUniform(new osg::Uniform("lightColor", osg::Vec3(1.0f, 1.0f, 1.0f)));
 }
 
 void updateVertexGeode(osg::ref_ptr<osg::Geode>& geode, osgKaleido::Polyhedron const& polyhedron, osg::ref_ptr<osg::Geometry>& geometry)
 {
 	osg::ref_ptr<osg::Vec3Array> vertices = osgKaleido::createVertexArray(polyhedron);
-
-	//OSG_WARN << vertices->size() << std::endl;
 
 	auto instances = 128;
 	auto offsets = createUniformArray("offsets", instances, vertices, osg::Vec3());
@@ -238,7 +241,7 @@ int main(int argc, char** argv)
 */
 	osg::ref_ptr<osgGA::LambdaEventHandler> eventHandler = new osgGA::LambdaEventHandler;
 	
-	int faces = osgKaleido::Polyhedron::All;
+	int faces = osgKaleido::PolyhedronGeode::All;
 	int index = 26;
 
 	osg::ref_ptr<osg::Geometry> vgeometry = osgKaleido::createGeometry(*pgeode->getPolyhedron());
@@ -247,6 +250,12 @@ int main(int argc, char** argv)
 	osg::Vec3f v(1.0f, 1.0f, 1.0f);
 	osg::Matrixf m = osg::Matrixf::scale(v * 0.125f * 0.25f);
 	transform(vgeometry, m);
+
+	auto colors = dynamic_cast<osg::Vec4Array*>(vgeometry->getColorArray());
+	if (colors != nullptr)
+	{
+		for(auto& color: (*colors)) color = osg::Vec4(0.25f, 0.25f, 0.25f, 1.0f);
+	}
 
 	updatePolyhedronGeode(pgeode, index, faces);
 	text->setText(pgeode->getPolyhedron()->getName() + "\n" + pgeode->getPolyhedron()->getWythoffSymbol());
@@ -258,7 +267,7 @@ int main(int argc, char** argv)
 		auto num = key - osgGA::GUIEventAdapter::KEY_0;
 		if (0 <= num && num <= 9)
 		{
-			faces ^= osgKaleido::Polyhedron::sidesToFace(wild::mod(num-1, 10) + 3);
+			faces ^= osgKaleido::PolyhedronGeode::FaceMaskFromSides(wild::mod(num-1, 10) + 3);
 			updatePolyhedronGeode(pgeode, index, faces);
 			return true;
 		}
@@ -276,7 +285,7 @@ int main(int argc, char** argv)
 		}
 		case osgGA::GUIEventAdapter::KEY_Right:
 		{
-			faces = osgKaleido::Polyhedron::All;
+			faces = osgKaleido::PolyhedronGeode::All;
 			index++;
 			updatePolyhedronGeode(pgeode, index, faces);
 			text->setText(pgeode->getPolyhedron()->getName() + "\n" + pgeode->getPolyhedron()->getWythoffSymbol());
@@ -286,7 +295,7 @@ int main(int argc, char** argv)
 		}
 		case osgGA::GUIEventAdapter::KEY_Left:
 		{
-			faces = osgKaleido::Polyhedron::All;
+			faces = osgKaleido::PolyhedronGeode::All;
 			index--;
 			updatePolyhedronGeode(pgeode, index, faces);
 			text->setText(pgeode->getPolyhedron()->getName() + "\n" + pgeode->getPolyhedron()->getWythoffSymbol());

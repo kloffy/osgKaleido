@@ -19,25 +19,6 @@ namespace osgKaleido {
 class OSGKALEIDO_EXPORT Polyhedron: public osg::Object
 {
 public:
-	enum Faces
-	{
-		None          = 0,
-		Triangular    = 1 << 0,
-		Quadrilateral = 1 << 1,
-		Pentagonal    = 1 << 2,
-		Hexagonal     = 1 << 3,
-		Heptagonal    = 1 << 4,
-		Octagonal     = 1 << 5,
-		Nonagonal     = 1 << 6,
-		Decagonal     = 1 << 7,
-		Hendecagonal  = 1 << 8,
-		Dodecagonal   = 1 << 9,
-		All           = ~None,
-	};
-
-	static Faces sidesToFace(int sides);
-	static int faceToSides(Faces faces);
-
 	Polyhedron();
 	Polyhedron(std::string const&);
 	Polyhedron(Polyhedron const&, osg::CopyOp const& = osg::CopyOp::SHALLOW_COPY);
@@ -52,7 +33,6 @@ public:
 
 	std::size_t Polyhedron::getVertexCount() const;
 	std::size_t Polyhedron::getFaceCount() const;
-	std::size_t Polyhedron::getFaceCount(Faces) const;
 	
 	bool isOneSided() const;
 	bool isHemi() const;
@@ -85,10 +65,7 @@ typedef std::vector<osg::ref_ptr<osg::UShortArray>> VertexIndexArrays;
 
 extern OSGKALEIDO_EXPORT osg::Vec3Array* createVertexArray(Polyhedron const&);
 extern OSGKALEIDO_EXPORT osg::UShortArray* createVertexIndexArray(Polyhedron const&, int);
-extern OSGKALEIDO_EXPORT VertexIndexArrays createVertexIndexArrays(Polyhedron const&, Polyhedron::Faces = Polyhedron::Faces::All);
-
-extern OSGKALEIDO_EXPORT osg::Geometry* createBasicGeometry(Polyhedron const&, Polyhedron::Faces = Polyhedron::Faces::All);
-extern OSGKALEIDO_EXPORT osg::Geometry* createGeometry(Polyhedron const&, Polyhedron::Faces = Polyhedron::Faces::All);
+extern OSGKALEIDO_EXPORT VertexIndexArrays createVertexIndexArrays(Polyhedron const&);
 /*
 extern OSGKALEIDO_EXPORT void createFaces(osg::Geometry*, Polyhedron const*, Polyhedron::Faces = Polyhedron::Faces::All);
 */

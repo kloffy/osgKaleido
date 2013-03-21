@@ -2,13 +2,14 @@
 #define OSGKALEIDO_POLYHEDRONGEODE_INCLUDED
 
 #include <osgKaleido/Export>
+#include <osgKaleido/DynamicGeode>
 #include <osgKaleido/Polyhedron>
 
 #include <osg/Geode>
 
 namespace osgKaleido {
 
-class OSGKALEIDO_EXPORT PolyhedronGeode: public osg::Geode
+class OSGKALEIDO_EXPORT PolyhedronGeode: public DynamicGeode
 {
 public:
 	enum FaceMask
@@ -27,6 +28,9 @@ public:
 		All           = ~None,
 	};
 
+	static FaceMask FaceMaskFromSides(int sides);
+	static int SidesFromFaceMask(FaceMask faces);
+
 	PolyhedronGeode();
 	PolyhedronGeode(std::string const&);
 	PolyhedronGeode(PolyhedronGeode const&, osg::CopyOp const& = osg::CopyOp::SHALLOW_COPY);
@@ -41,25 +45,22 @@ public:
 	inline Polyhedron* getPolyhedron() { return _polyhedron.get(); }
 	inline Polyhedron const* getPolyhedron() const { return _polyhedron.get(); }
 
-	inline void dirty()
-	{
-		_dirty = true;
-	}
-
-	virtual void traverse(osg::NodeVisitor&) override;
-
 	META_Object(osgKaleido, PolyhedronGeode);
 
+protected:
+	virtual ~PolyhedronGeode();
+
+	virtual void update(osg::NodeVisitor*);
+
 private:
-	void generate();
-
-	bool _dirty;
-
 	osg::ref_ptr<Polyhedron> _polyhedron;
 	FaceMask _faces;
 
 	osg::ref_ptr<osg::Geometry> _geometry;
 };
+
+extern OSGKALEIDO_EXPORT osg::Geometry* createBasicGeometry(Polyhedron const&, PolyhedronGeode::FaceMask = PolyhedronGeode::All);
+extern OSGKALEIDO_EXPORT osg::Geometry* createGeometry(Polyhedron const&, PolyhedronGeode::FaceMask = PolyhedronGeode::All);
 
 } // osgKaleido
 

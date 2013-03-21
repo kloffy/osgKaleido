@@ -1,0 +1,39 @@
+#ifndef OSGKALEIDO_DYNAMICGEODE_INCLUDED
+#define OSGKALEIDO_DYNAMICGEODE_INCLUDED
+
+#include <osgKaleido/Export>
+
+#include <osg/Geode>
+
+namespace osgKaleido {
+
+class OSGKALEIDO_EXPORT DynamicGeode: public osg::Geode
+{
+	class Callback: public osg::NodeCallback
+	{
+	public:
+		void operator()(osg::Node*, osg::NodeVisitor*);
+	};
+
+public:
+	DynamicGeode();
+	DynamicGeode(DynamicGeode const&, osg::CopyOp const& = osg::CopyOp::SHALLOW_COPY);
+
+	inline bool isDirty() const { return _dirty; }
+	inline void dirty() { _dirty = true; }
+	
+protected:
+	virtual ~DynamicGeode();
+
+	inline void clean() { _dirty = false; }
+
+	virtual void update(osg::NodeVisitor*) = 0;
+
+private:
+	Callback* _callback;
+	bool _dirty;
+};
+
+} // osgKaleido
+
+#endif // OSGKALEIDO_DYNAMICGEODE_INCLUDED
