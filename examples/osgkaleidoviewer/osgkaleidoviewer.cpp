@@ -20,137 +20,324 @@
 #include <wild/conversion.hpp>
 #include <wild/math.hpp>
 
-osg::Uniform* createUniformArray(std::string const& name, unsigned int numElements, osg::Vec3Array* data, osg::Vec3 const& _default)
+osg::Matrixf inverseTranspose(osg::Matrixf const& m)
 {
-	osg::Uniform* result = new osg::Uniform(osg::Uniform::FLOAT_VEC3, name, numElements);
-	for (auto i = 0u; i < numElements; ++i)
-	{
-		if (i < data->size())
-		{
-			result->setElement(i, data->at(i));
-		}
-		else
-		{
-			result->setElement(i, _default);
-		}
-	}
-	return result;
+	osg::Matrixf matrix(m);
+	matrix.setTrans(0.0, 0.0, 0.0);
+	matrix.invert(matrix);
+	return osg::Matrixf(
+		matrix(0,0), matrix(1,0), matrix(2,0), matrix(3,0),
+		matrix(0,1), matrix(1,1), matrix(2,1), matrix(3,1),
+		matrix(0,2), matrix(1,2), matrix(2,2), matrix(3,2),
+		matrix(0,3), matrix(1,3), matrix(2,3), matrix(3,3)
+	);
 }
 
-void makeInstanced(osg::Geometry* geometry, int nInstances)
+template<typename TArray>
+void fill(TArray& items, typename TArray::value_type const& value)
+{
+	for(auto& item: items) { item = value; }
+}
+
+template<typename TArray, typename TMatrix>
+void transform(TArray& items, TMatrix const& matrix)
+{
+	for(auto& item: items) { item = matrix * item; }
+}
+
+void makeInstanced(osg::Geometry* geometry, unsigned int numInstances)
 {
 	if (geometry == nullptr) return;
 
 	osg::Geometry::PrimitiveSetList sets = geometry->getPrimitiveSetList();
 	for (auto const& set: sets)
 	{
-		set->setNumInstances(nInstances);
+		set->setNumInstances(numInstances);
 	}
 }
 
-void setupPolyhedronGeode(osg::Geode& geode)
+void copy(osg::Uniform* uniform, osg::Vec3Array* data, osg::Vec3 const& defaultValue)
 {
-	osg::ref_ptr<osg::Program> program = new osg::Program;
-	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, "data/diffuse_directional2_vs.glsl"));
-	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/diffuse_directional2_fs.glsl"));
+	for (auto i = 0u; i < uniform->getNumElements(); ++i)
+	{
+		if (i < data->size())
+		{
+			uniform->setElement(i, data->at(i));
+		}
+		else
+		{
+			uniform->setElement(i, defaultValue);
+		}
+	}
+	uniform->dirty();
+}
+
+class Scene: public osg::Group
+{
+public:
+	static const int VertexInstances = 128;
+
+	Scene(osgViewer::Viewer*, unsigned int, unsigned int);
+
+	void onFaceMaskChanged();
+	void onPolyhedronChanged();
+	void onLightModelChanged();
+
+	void create();
+
+private:
+	void createPolyhedronNode();
+	void createVertexNode();
+	void createTextNode();
+
+	unsigned int _faces;
+	unsigned int _index;
+	bool _twoSided;
+
+	osg::observer_ptr<osgViewer::Viewer> _viewer;
+
+	unsigned int _windowWidth;
+	unsigned int _windowHeight;
+
+	osg::ref_ptr<osg::Program> _oneSidedProgram;
+	osg::ref_ptr<osg::Program> _twoSidedProgram;
+	osg::ref_ptr<osg::Program> _instancedProgram;
+
+	osg::ref_ptr<osg::Geode> _pgeode;
+	osg::ref_ptr<osg::Geode> _vgeode;
+
+	osg::ref_ptr<osgKaleido::PolyhedronGeometry> _pgeometry;
+	osg::ref_ptr<osgKaleido::PolyhedronGeometry> _vgeometry;
+
+	osg::ref_ptr<osgText::Text> _text;
+};
+
+Scene::Scene(osgViewer::Viewer* viewer, unsigned int windowWidth, unsigned int windowHeight):
+	_viewer(viewer),
+	_windowWidth(windowWidth),
+	_windowHeight(windowHeight),
+	_faces(osgKaleido::PolyhedronGeometry::All),
+	_index(26),
+	_twoSided(true)
+{
+	create();
+}
+
+void Scene::create()
+{
+	_oneSidedProgram = new osg::Program;
+	_oneSidedProgram->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, "data/diffuse_directional1_vs.glsl"));
+	_oneSidedProgram->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/diffuse_directional1_fs.glsl"));
+
+	_twoSidedProgram = new osg::Program;
+	_twoSidedProgram->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, "data/diffuse_directional2_vs.glsl"));
+	_twoSidedProgram->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/diffuse_directional2_fs.glsl"));
+
+	_instancedProgram = new osg::Program;
+	_instancedProgram->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, "data/diffuse_billboard_instanced_vs.glsl"));
+	_instancedProgram->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/diffuse_billboard_instanced_fs.glsl"));
+
+	createPolyhedronNode();
+	createVertexNode();
+	createTextNode();
+
+	onPolyhedronChanged();
+	onLightModelChanged();
+
+	osg::ref_ptr<osgGA::LambdaEventHandler> eventHandler = new osgGA::LambdaEventHandler;
+	eventHandler->onKeyDown([&](const osgGA::GUIEventAdapter& ea){
+		auto key = ea.getKey();
+		auto num = key - osgGA::GUIEventAdapter::KEY_0;
+		if (0 <= num && num <= 9)
+		{
+			_faces ^= osgKaleido::PolyhedronGeometry::FaceMaskFromSides(wild::mod(num-1, 10) + 3);
+			onFaceMaskChanged();
+			return true;
+		}
+		switch (key)
+		{
+		case osgGA::GUIEventAdapter::KEY_V:
+		{
+			_vgeode->setNodeMask(~_vgeode->getNodeMask());
+			return true;
+		}
+		case osgGA::GUIEventAdapter::KEY_L:
+		{
+			_twoSided = !_twoSided;
+			onLightModelChanged();
+			return true;
+		}
+		case osgGA::GUIEventAdapter::KEY_Right:
+		{
+			_faces = osgKaleido::PolyhedronGeometry::All;
+			_index++;
+			onPolyhedronChanged();
+			return true;
+		}
+		case osgGA::GUIEventAdapter::KEY_Left:
+		{
+			_faces = osgKaleido::PolyhedronGeometry::All;
+			_index--;
+			onPolyhedronChanged();
+			return true;
+		}
+		default:
+			return false;
+		}
+	});
+
+	_viewer->addEventHandler(eventHandler);
+}
+
+void Scene::createPolyhedronNode()
+{
+	_pgeode = new osg::Geode;
+	_pgeode->setDataVariance(osg::Object::DYNAMIC);
 
 	osg::Vec3f lightDir(0.0f, 0.0f, 1.0f);
 	lightDir.normalize();
 
-	auto stateSet = geode.getOrCreateStateSet();
-	stateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
+	auto stateSet = _pgeode->getOrCreateStateSet();
+	stateSet->setAttributeAndModes(_twoSidedProgram, osg::StateAttribute::ON);
 	stateSet->addUniform(new osg::Uniform("ecLightDirection", lightDir));
 	stateSet->addUniform(new osg::Uniform("lightColor", osg::Vec3(1.0f, 1.0f, 1.0f)));
 
-	geode.setDataVariance(osg::Object::DYNAMIC);
+	_pgeometry = new osgKaleido::PolyhedronGeometry("#27");
+	_pgeometry->setUseDisplayList(false);
+	_pgeometry->setUseVertexBufferObjects(true);
+
+	_pgeode->addDrawable(_pgeometry);
+
+	addChild(_pgeode);
 }
 
-void updatePolyhedronGeode(osg::ref_ptr<osgKaleido::PolyhedronGeometry>& pgeode, int index, unsigned int faces)
+void Scene::createVertexNode()
 {
-	auto symbol = "#" + wild::conversion_cast<std::string>(wild::mod(index, 80) + 1);
+	_vgeode = new osg::Geode;
+	_vgeode->setDataVariance(osg::Object::DYNAMIC);
 
-	pgeode->setSymbol(symbol);
-	pgeode->setFaceMask(static_cast<osgKaleido::PolyhedronGeometry::FaceMask>(faces));
+	osg::Vec3f lightDir(1.0f, 1.0f, 1.0f);
+	lightDir.normalize();
 
-	auto const& polyhedron = pgeode->getOrCreatePolyhedron();
+	auto offsets = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "offsets", Scene::VertexInstances);
+	offsets->setDataVariance(osg::Object::DYNAMIC);
+
+	auto stateSet = _vgeode->getOrCreateStateSet();
+	stateSet->setAttributeAndModes(_instancedProgram, osg::StateAttribute::ON);
+	stateSet->addUniform(new osg::Uniform("ecLightDirection", lightDir));
+	stateSet->addUniform(new osg::Uniform("lightColor", osg::Vec3(1.0f, 1.0f, 1.0f)));
+	stateSet->addUniform(offsets);
+
+	osg::Vec3 scale(1.0f, 1.0f, 1.0f);
+	osg::Vec4 color(0.25f, 0.25f, 0.25f, 1.0f);
+
+	auto vertexMatrix = osg::Matrixf::scale(scale * 0.125f * 0.25f);
+	auto normalMatrix = inverseTranspose(vertexMatrix);
+
+	_vgeometry = new osgKaleido::PolyhedronGeometry("#27");
+	_vgeometry->setUseDisplayList(false);
+	_vgeometry->setUseVertexBufferObjects(true);
+
+	_vgeometry->update(nullptr); // Force geometry generation
+
+	auto vertices = dynamic_cast<osg::Vec3Array*>(_vgeometry->getVertexArray());
+	if (vertices != nullptr) { transform(*vertices, vertexMatrix); }
+
+	auto normals = dynamic_cast<osg::Vec3Array*>(_vgeometry->getNormalArray());
+	if (normals != nullptr) { transform(*normals, normalMatrix); }
+
+	auto colors = dynamic_cast<osg::Vec4Array*>(_vgeometry->getColorArray());
+	if (colors != nullptr) { fill(*colors, color); }
+
+	makeInstanced(_vgeometry, Scene::VertexInstances);
+
+	auto size = 1.0f;
+	osg::BoundingBox bb(-size, -size, -size, +size, +size, +size);
+	_vgeometry->setInitialBound(bb);
+
+	_vgeode->addDrawable(_vgeometry);
+
+	addChild(_vgeode);
+}
+
+void Scene::createTextNode()
+{
+	osg::ref_ptr<osg::Geode> tgeode = new osg::Geode;
+	tgeode->setDataVariance(osg::Object::DYNAMIC);
+
+	osg::Projection* projection = new osg::Projection;
+	projection->setMatrix(osg::Matrix::ortho2D(0, _windowWidth, 0, _windowHeight));
+
+	osg::MatrixTransform* modelView = new osg::MatrixTransform;
+	modelView->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+	modelView->setMatrix(osg::Matrix::identity());
+
+	_text = new osgText::Text();
+	_text->setAxisAlignment(osgText::Text::SCREEN);
+	_text->setAlignment(osgText::Text::CENTER_TOP);
+	_text->setFont("/fonts/arial.ttf");
+	_text->setCharacterSize(16.0f);
+	_text->setLineSpacing(0.25f);
+	_text->setPosition(osg::Vec3(_windowWidth/2.0f, _windowHeight - 10.0f, -1.5f));
+
+	osg::ref_ptr<osg::UseVertexAttributeAliasing> vaa = new osg::UseVertexAttributeAliasing(false);
+	_text->setDrawCallback(vaa);
+
+	auto stateSet = tgeode->getOrCreateStateSet();
+	stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+	stateSet->setRenderBinDetails(15, "DepthSortedBin", osg::StateSet::OVERRIDE_RENDERBIN_DETAILS);
+
+	tgeode->addDrawable(_text);
+	modelView->addChild(tgeode);
+	projection->addChild(modelView);
+
+	addChild(projection);
+}
+
+void Scene::onFaceMaskChanged()
+{
+	_pgeometry->setFaceMask(static_cast<osgKaleido::PolyhedronGeometry::FaceMask>(_faces));
+}
+
+void Scene::onPolyhedronChanged()
+{
+	// Update Polyhedron
+	auto symbol = "#" + wild::conversion_cast<std::string>(wild::mod(_index, 80) + 1);
+
+	_pgeometry->setSymbol(symbol);
+	_pgeometry->setFaceMask(static_cast<osgKaleido::PolyhedronGeometry::FaceMask>(_faces));
+
+	auto polyhedron = _pgeometry->getOrCreatePolyhedron();
 
 	OSG_INFO << polyhedron->getName() << " (" << polyhedron->getDualName() << "*)" << std::endl;
 	OSG_INFO << polyhedron->getWythoffSymbol() << std::endl;
 	OSG_INFO << polyhedron->getVertexConfiguration() << std::endl;
 	OSG_INFO << polyhedron->getVertexCount() << std::endl;
 	OSG_INFO << polyhedron->getFaceCount() << std::endl;
+
+	// Update Vertices
+	osg::ref_ptr<osg::Vec3Array> vertices = osgKaleido::createVertexArray(*polyhedron);
+
+	auto stateSet = _vgeode->getOrCreateStateSet();
+	auto offsets = stateSet->getUniform("offsets");
+	
+	copy(offsets, vertices, osg::Vec3());
+
+	// Update Text
+	_text->setText(polyhedron->getName() + "\n" + polyhedron->getWythoffSymbol());
 }
 
-void setupVertexGeode(osg::Geode& geode)
+void Scene::onLightModelChanged()
 {
-	osg::ref_ptr<osg::Program> program = new osg::Program;
-	program->addShader(osgDB::readShaderFile(osg::Shader::VERTEX, "data/diffuse_billboard_instanced_vs.glsl"));
-	program->addShader(osgDB::readShaderFile(osg::Shader::FRAGMENT, "data/diffuse_billboard_instanced_fs.glsl"));
+	auto program = _twoSided ? _twoSidedProgram : _oneSidedProgram;
 
-	osg::Vec3f lightDir(1.0f, 1.0f, 1.0f);
-	lightDir.normalize();
-
-	auto stateSet = geode.getOrCreateStateSet();
+	auto stateSet = _pgeode->getOrCreateStateSet();
 	stateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
-	stateSet->addUniform(new osg::Uniform("ecLightDirection", lightDir));
-	stateSet->addUniform(new osg::Uniform("lightColor", osg::Vec3(1.0f, 1.0f, 1.0f)));
-
-	geode.setDataVariance(osg::Object::DYNAMIC);
-}
-
-void updateVertexGeode(osg::ref_ptr<osg::Geode>& geode, osgKaleido::Polyhedron const& polyhedron, osg::Geometry* geometry)
-{
-	if (geometry == nullptr) return;
-
-	osg::ref_ptr<osg::Vec3Array> vertices = osgKaleido::createVertexArray(polyhedron);
-
-	auto instances = 128;
-	auto offsets = createUniformArray("offsets", instances, vertices, osg::Vec3());
-	
-	auto stateSet = geode->getOrCreateStateSet();
-	stateSet->removeUniform("offsets");
-	stateSet->addUniform(offsets);
-	
-	makeInstanced(geometry, instances);
-
-	auto size = 1.0f;
-	osg::BoundingBox bb(-size, -size, -size, +size, +size, +size);
-	geometry->setInitialBound(bb);
-
-	geode->addDrawable(geometry);
-}
-
-osg::Matrix3 inverseTranspose(osg::Matrixf const& m)
-{
-	osg::Matrixf matrix(m);
-	matrix.setTrans(0.0, 0.0, 0.0);
-	matrix.invert(matrix);
-	return osg::Matrix3(
-		matrix(0,0), matrix(1,0), matrix(2,0),
-		matrix(0,1), matrix(1,1), matrix(2,1),
-		matrix(0,2), matrix(1,2), matrix(2,2)
-	);
-}
-
-void transform(osg::Geometry& geometry, osg::Matrixf const& matrix)
-{
-	auto vertices = dynamic_cast<osg::Vec3Array*>(geometry.getVertexArray());
-	if (vertices != nullptr)
-	{
-		for(auto& vertex: (*vertices)) vertex = matrix * vertex;
-	}
-	auto normals = dynamic_cast<osg::Vec3Array*>(geometry.getNormalArray());
-	if (normals != nullptr)
-	{
-		auto normalMatrix = inverseTranspose(matrix);
-		for(auto& normal: (*normals)) normal = matrix * normal;
-	}
 }
 
 int main(int argc, char** argv)
 {
 /*
-	//osg::ref_ptr<osg::Node> test = new osg::Node;
 	osg::ref_ptr<osg::Geode> test = new osg::Geode;
 
 	osg::ref_ptr<osgKaleido::PolyhedronGeometry> testGeometry = new osgKaleido::PolyhedronGeometry("#3", osgKaleido::PolyhedronGeometry::Triangular);
@@ -160,14 +347,6 @@ int main(int argc, char** argv)
 	osg::ref_ptr<osgDB::Options> options = new osgDB::Options("Ascii");
 	osgDB::ReaderWriter::WriteResult wr = osgDB::Registry::instance()->getReaderWriterForExtension("osgt")->writeObject(*test, sstream, options);
 	std::cout << sstream.str() << std::endl;
-*/
-/*
-	osg::ref_ptr<osg::UIntArray> array = new osg::UIntArray(); 
-	array->push_back( 0 ); 
-	array->push_back( 1 ); 
-	array->push_back( 2 ); 
-	array->push_back( 3 ); 
-	p_geometry->addPrimitiveSet( new osg::DrawElementsUInt( osg::PrimitiveSet::TRIANGLES, array->size(), & array->front() ) ); 
 */
 	//osg::setNotifyLevel(osg::INFO);
 
@@ -189,9 +368,8 @@ int main(int argc, char** argv)
 
 	osgViewer::Viewer viewer(arguments);
 	viewer.setUpViewInWindow((screenSettings.width - windowWidth)/2, (screenSettings.height - windowHeight)/2, 800, 600);
+	viewer.setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
 	viewer.setRunMaxFrameRate(0.0);
-	//viewer.setRunFrameScheme(osgViewer::Viewer::CONTINUOUS);
-	//viewer.setThreadingModel(osgViewer::Viewer::SingleThreaded);
 	viewer.realize();
 
 	osgViewer::Viewer::Windows windows;
@@ -205,137 +383,9 @@ int main(int argc, char** argv)
 		state->setUseVertexAttributeAliasing(true);
 	}
 
-	osg::ref_ptr<osg::Group> root = new osg::Group;
-	osg::ref_ptr<osg::Geode> tgeode = new osg::Geode;
-	osg::ref_ptr<osg::Geode> pgeode = new osg::Geode;
-	setupPolyhedronGeode(*pgeode);
+	osg::ref_ptr<Scene> scene = new Scene(&viewer, windowWidth, windowHeight);
 
-	osg::ref_ptr<osgKaleido::PolyhedronGeometry> pgeometry = new osgKaleido::PolyhedronGeometry("#27");
-	pgeometry->setUseDisplayList(false);
-	pgeometry->setUseVertexBufferObjects(true);
-
-	pgeode->addDrawable(pgeometry);
-/*
-	osg::ref_ptr<osgKaleido::PolyhedronGeode> pgeode = new osgKaleido::PolyhedronGeode("#27");
-	setupPolyhedronGeode(*pgeode);
-*/
-	osg::ref_ptr<osg::Geode> vgeode = new osg::Geode;
-	setupVertexGeode(*vgeode);
-
-	osg::Projection* projection = new osg::Projection;
-	projection->setMatrix(osg::Matrix::ortho2D(0, windowWidth, 0, windowHeight));
-
-	osg::MatrixTransform* modelView = new osg::MatrixTransform;
-	modelView->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-	modelView->setMatrix(osg::Matrix::identity());
-
-	osg::ref_ptr<osgText::Text> text = new osgText::Text();
-	text->setAxisAlignment(osgText::Text::SCREEN);
-	text->setAlignment(osgText::Text::CENTER_TOP);
-	text->setFont("/fonts/arial.ttf");
-	text->setCharacterSize(16.0f);
-	text->setLineSpacing(0.25f);
-	text->setPosition(osg::Vec3(windowWidth/2.0f, windowHeight - 10.0f, -1.5f));
-
-	osg::ref_ptr<osg::UseVertexAttributeAliasing> vaa = new osg::UseVertexAttributeAliasing(false);
-	text->setDrawCallback(vaa);
-
-	auto stateSet = tgeode->getOrCreateStateSet();
-	stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-	stateSet->setRenderBinDetails(15, "DepthSortedBin", osg::StateSet::OVERRIDE_RENDERBIN_DETAILS);
-
-	tgeode->addDrawable(text);
-	modelView->addChild(tgeode);
-	projection->addChild(modelView);
-	root->addChild(projection);
-
-	//osg::ref_ptr<osg::LightModel> lightModel = new osg::LightModel;
-	//lightModel->setTwoSided(true);
-
-	//osg::ref_ptr<osg::PolygonMode> polygonMode = new osg::PolygonMode;
-	//polygonMode->setMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::FILL);
-/*
-	osg::Vec2 extent(0.125f, 0.125f);
-	osg::Vec3 corner(-extent.x()/2.0f,-extent.y()/2.0f, 0.0f);
-	vgeometry = osg::createTexturedQuadGeometry(corner, osg::X_AXIS * extent.x(), osg::Y_AXIS * extent.y());
-	vgeometry->setUseVertexBufferObjects(true);
-*/
-	osg::ref_ptr<osgGA::LambdaEventHandler> eventHandler = new osgGA::LambdaEventHandler;
-	
-	int faces = osgKaleido::PolyhedronGeometry::All;
-	int index = 26;
-
-	osg::ref_ptr<osgKaleido::PolyhedronGeometry> vgeometry = new osgKaleido::PolyhedronGeometry("#27");
-	vgeometry->setUseVertexBufferObjects(true);
-	vgeometry->update(nullptr);
-	
-	osg::Vec3f v(1.0f, 1.0f, 1.0f);
-	osg::Matrixf m = osg::Matrixf::scale(v * 0.125f * 0.25f);
-	transform(*vgeometry, m);
-
-	auto colors = dynamic_cast<osg::Vec4Array*>(vgeometry->getColorArray());
-	if (colors != nullptr)
-	{
-		for(auto& color: (*colors)) color = osg::Vec4(0.25f, 0.25f, 0.25f, 1.0f);
-	}
-
-	updatePolyhedronGeode(pgeometry, index, faces);
-	text->setText(pgeometry->getOrCreatePolyhedron()->getName() + "\n" + pgeometry->getOrCreatePolyhedron()->getWythoffSymbol());
-
-	updateVertexGeode(vgeode, *pgeometry->getOrCreatePolyhedron(), vgeometry.get());
-
-	eventHandler->onKeyDown([&](const osgGA::GUIEventAdapter& ea){
-		auto key = ea.getKey();
-		auto num = key - osgGA::GUIEventAdapter::KEY_0;
-		if (0 <= num && num <= 9)
-		{
-			faces ^= osgKaleido::PolyhedronGeometry::FaceMaskFromSides(wild::mod(num-1, 10) + 3);
-			updatePolyhedronGeode(pgeometry, index, faces);
-			return true;
-		}
-		switch (key)
-		{
-		case osgGA::GUIEventAdapter::KEY_V:
-		{
-			vgeode->setNodeMask(~vgeode->getNodeMask());
-			return true;
-		}
-		case osgGA::GUIEventAdapter::KEY_L:
-		{
-			//lightModel->setTwoSided(!lightModel->getTwoSided());
-			return true;
-		}
-		case osgGA::GUIEventAdapter::KEY_Right:
-		{
-			faces = osgKaleido::PolyhedronGeometry::All;
-			index++;
-			updatePolyhedronGeode(pgeometry, index, faces);
-			text->setText(pgeometry->getOrCreatePolyhedron()->getName() + "\n" + pgeometry->getOrCreatePolyhedron()->getWythoffSymbol());
-
-			updateVertexGeode(vgeode, *pgeometry->getOrCreatePolyhedron(), vgeometry.get());
-			return true;
-		}
-		case osgGA::GUIEventAdapter::KEY_Left:
-		{
-			faces = osgKaleido::PolyhedronGeometry::All;
-			index--;
-			updatePolyhedronGeode(pgeometry, index, faces);
-			text->setText(pgeometry->getOrCreatePolyhedron()->getName() + "\n" + pgeometry->getOrCreatePolyhedron()->getWythoffSymbol());
-
-			updateVertexGeode(vgeode, *pgeometry->getOrCreatePolyhedron(), vgeometry.get());
-			return true;
-		}
-		default:
-			return false;
-		}
-	});
-
-	root->addChild(vgeode);
-	root->addChild(pgeode);
-
-	viewer.setSceneData(root.get());
-	viewer.setCameraManipulator(new osgGA::TrackballManipulator);
-	viewer.addEventHandler(eventHandler);
+	viewer.setSceneData(scene);
 
 	return viewer.run();
 }

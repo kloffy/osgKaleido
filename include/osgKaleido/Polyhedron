@@ -16,15 +16,11 @@ namespace osgKaleido {
 /**
  * Polyhedron is a RAII wrapper around kaleido polyhedron data.
  */
-class OSGKALEIDO_EXPORT Polyhedron: public osg::Object
+class OSGKALEIDO_EXPORT Polyhedron: public osg::Referenced
 {
 public:
 	Polyhedron();
 	Polyhedron(std::string const&);
-	Polyhedron(Polyhedron const&, osg::CopyOp const& = osg::CopyOp::SHALLOW_COPY);
-
-	std::string const& getSymbol() const;
-	void setSymbol(std::string const&);
 
 	std::string getName() const;
 	std::string getDualName() const;
@@ -47,8 +43,6 @@ public:
 		return _data != nullptr;
 	}
 
-	META_Object(osgKaleido, Polyhedron);
-
 protected:
 	// Use reference counting.
 	virtual ~Polyhedron(); 
@@ -66,9 +60,11 @@ typedef std::vector<osg::ref_ptr<osg::UShortArray>> VertexIndexArrays;
 extern OSGKALEIDO_EXPORT osg::Vec3Array* createVertexArray(Polyhedron const&);
 extern OSGKALEIDO_EXPORT osg::UShortArray* createVertexIndexArray(Polyhedron const&, int);
 extern OSGKALEIDO_EXPORT VertexIndexArrays createVertexIndexArrays(Polyhedron const&);
+
 /*
 extern OSGKALEIDO_EXPORT void createFaces(osg::Geometry*, Polyhedron const*, Polyhedron::Faces = Polyhedron::Faces::All);
 */
+
 } // osgKaleido
 
 #endif // OSGKALEIDO_POLYHEDRON_INCLUDED

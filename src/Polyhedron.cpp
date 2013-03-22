@@ -60,35 +60,7 @@ int polyhedron_ftype_sides(::Polyhedron const* P, int ftype)
 {
 	return numerator(P->n[ftype]);
 }
-/*
-osg::Vec4 face_color(osgKaleido::Polyhedron::Faces faces)
-{
-	osg::Vec4 result;
 
-	auto x = Polyhedron::faceToSides(faces) - 2;
-
-	result.r() = std::max(0.25f, static_cast<float>((x >> 0) & 1));
-	result.g() = std::max(0.25f, static_cast<float>((x >> 1) & 1));
-	result.b() = std::max(0.25f, static_cast<float>((x >> 2) & 1));
-	result.a() = 1.0f;
-
-	return result;
-}
-
-std::size_t face_count(osgKaleido::Polyhedron::Faces faces, ::Polyhedron const* P)
-{
-	std::size_t result = 0;
-	for(int n = 0; n < P->N; ++n)
-	{
-		auto face = Polyhedron::sidesToFace(detail::polyhedron_ftype_sides(P, n));
-
-		if (!(faces & face)) continue;
-
-		result += P->m[n];
-	}
-	return result;
-}
-*/
 }
 
 Polyhedron::Polyhedron(): _symbol("#1"), _data(nullptr)
@@ -101,11 +73,6 @@ Polyhedron::Polyhedron(std::string const& symbol): _symbol(symbol), _data(nullpt
 	create();
 }
 
-Polyhedron::Polyhedron(Polyhedron const& other, osg::CopyOp const& op): _symbol(other._symbol), _data(nullptr)
-{
-	create();
-}
-
 Polyhedron::~Polyhedron()
 {
 	destroy();
@@ -113,7 +80,7 @@ Polyhedron::~Polyhedron()
 
 void Polyhedron::create()
 {
-	OSG_DEBUG << "Create Polyhedron" << std::endl;
+	OSG_INFO << "Create Polyhedron" << std::endl;
 
 	int need_coordinates = 1, need_edgelist = 1, need_approx = 0, just_list = 0;
 
@@ -124,7 +91,7 @@ void Polyhedron::create()
 
 void Polyhedron::destroy()
 {
-	OSG_DEBUG << "Delete Polyhedron" << std::endl;
+	OSG_INFO << "Delete Polyhedron" << std::endl;
 
 	if (_data != nullptr)
 	{
@@ -132,20 +99,6 @@ void Polyhedron::destroy()
 		_data = nullptr;
 	}
 }
-
-std::string const& Polyhedron::getSymbol() const
-{
-	return _symbol;
-}
-
-void Polyhedron::setSymbol(std::string const& symbol)
-{
-	destroy();
-
-	_symbol = symbol;
-
-	create();
-} 
 
 std::string Polyhedron::getName() const
 {
@@ -307,8 +260,3 @@ void createFaces(osg::Geometry* result, Polyhedron const* polyhedron, Polyhedron
 */
 
 } // osgKaleido
-
-REGISTER_OBJECT_WRAPPER(Polyhedron, new osgKaleido::Polyhedron, osgKaleido::Polyhedron, "osg::Object osgKaleido::Polyhedron")
-{
-	ADD_STRING_SERIALIZER(Symbol, "#1");
-}

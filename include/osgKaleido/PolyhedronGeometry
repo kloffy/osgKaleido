@@ -1,12 +1,14 @@
 #ifndef OSGKALEIDO_POLYHEDRONGEOMETRY_INCLUDED
 #define OSGKALEIDO_POLYHEDRONGEOMETRY_INCLUDED
 
-#include <osgKaleido/Export>
 #include <osgKaleido/DynamicGeometry>
 #include <osgKaleido/Polyhedron>
 
 namespace osgKaleido {
 
+/**
+ * PolyhedronGeometry is a convenience class representing the polyhedron faces.
+ */
 class OSGKALEIDO_EXPORT PolyhedronGeometry: public DynamicGeometry
 {
 public:
@@ -26,8 +28,8 @@ public:
 		All           = ~None,
 	};
 
-	static FaceMask FaceMaskFromSides(int sides);
-	static int SidesFromFaceMask(FaceMask faces);
+	static FaceMask FaceMaskFromSides(int);
+	static int SidesFromFaceMask(FaceMask);
 
 	PolyhedronGeometry();
 	PolyhedronGeometry(std::string const&, FaceMask = FaceMask::All);

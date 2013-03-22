@@ -89,7 +89,7 @@ osg::Vec4Array* getOrCreateColorArray(osg::Geometry& geometry)
 	return result;
 }
 
-void createFaces(osg::Geometry& geometry, Polyhedron const& polyhedron, PolyhedronGeometry::FaceMask faceMask = PolyhedronGeometry::All)
+void createFaces(osg::Geometry& geometry, Polyhedron const& polyhedron, unsigned int faceMask = PolyhedronGeometry::All)
 {
 	osgUtil::Tessellator tessellator;
 	tessellator.setTessellationType(osgUtil::Tessellator::TESS_TYPE_POLYGONS);

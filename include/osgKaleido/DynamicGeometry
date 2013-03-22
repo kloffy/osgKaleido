@@ -7,9 +7,11 @@
 
 namespace osgKaleido {
 
-// OpenSceneGraph 3.0 - Beginner's Guide
-// Chapter 8 (Time for action – drawing a geometry dynamically)
-
+/**
+ * DynamicGeometry is an abstract base for dynamic procedural geometries. See:
+ * OpenSceneGraph 3.0 - Beginner's Guide
+ * Chapter 8 (Time for action – drawing a geometry dynamically)
+ */
 class OSGKALEIDO_EXPORT DynamicGeometry: public osg::Geometry
 {
 	class Callback : public osg::Drawable::UpdateCallback
