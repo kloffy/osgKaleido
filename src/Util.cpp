@@ -29,4 +29,6 @@ void throwException()
 }
 #endif // OSGKALEIDO_EXCEPTIONS_ENABLED
 
+
+
 } // osgKaleido

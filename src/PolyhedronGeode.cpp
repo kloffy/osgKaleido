@@ -19,7 +19,7 @@ namespace osgKaleido {
  */
 PolyhedronGeode::FaceMask PolyhedronGeode::FaceMaskFromSides(int sides)
 {
-	assert(sides > 2);
+	assert(sides >= 3);
 	return static_cast<PolyhedronGeode::FaceMask>(1 << (sides - 3));
 }
 
@@ -28,7 +28,7 @@ PolyhedronGeode::FaceMask PolyhedronGeode::FaceMaskFromSides(int sides)
  */
 int PolyhedronGeode::SidesFromFaceMask(PolyhedronGeode::FaceMask faces)
 {
-	assert(faces > 0);
+	assert(faces >= 1);
 	return wild::fls(faces) + 3;
 }
 
@@ -100,7 +100,6 @@ void PolyhedronGeode::update(osg::NodeVisitor* nv)
 
 	if (_geometry) addDrawable(_geometry);
 }
-
 
 osg::Vec3 calculateNormal(osg::Vec3Array* vertices, osg::UShortArray* polygon)
 {

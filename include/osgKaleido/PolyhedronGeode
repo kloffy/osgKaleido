@@ -64,4 +64,4 @@ extern OSGKALEIDO_EXPORT osg::Geometry* createGeometry(Polyhedron const&, Polyhe
 
 } // osgKaleido
 
-#endif // OSGKALEIDO_POLYHEDRON_INCLUDED
+#endif // OSGKALEIDO_POLYHEDRONGEODE_INCLUDED

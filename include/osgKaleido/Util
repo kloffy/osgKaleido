@@ -9,13 +9,56 @@ namespace osgKaleido {
 
 void throwException();
 
+#ifdef OSGKALEIDO_EXCEPTIONS_ENABLED
+
 template<class T>
 bool checkStatusAndThrowException(const T& object)
 {
 	auto result = object.getStatus();
-	if (!result) throwException();
+	if (!result)
+	{
+		throwException();
+	}
 	return result;
 }
+
+template<class T, typename ...Args>
+T* tryCreateOrReturnNull(Args&& ...args)
+{
+	try
+	{
+		osg::ref_ptr<T> object = new T( std::forward<Args>(args)... );
+		return object.release();
+	}
+	catch (std::exception&)
+	{
+		return nullptr;
+	}
+}
+
+#else
+
+template<class T>
+bool checkStatusAndThrowException(const T& object)
+{
+	return object.getStatus();
+}
+
+template<class T, typename ...Args>
+T* tryCreateOrReturnNull(Args&& ...args)
+{
+	osg::ref_ptr<T> object = new T( std::forward<Args>(args)... );
+	if (object.getStatus())
+	{
+		return object.release();
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+#endif // OSGKALEIDO_EXCEPTIONS_ENABLED
 
 } // osgKaleido
 

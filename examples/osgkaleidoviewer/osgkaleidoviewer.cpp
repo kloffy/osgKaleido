@@ -16,6 +16,7 @@
 #pragma warning(pop)
 
 #include <osgKaleido/PolyhedronGeode>
+#include <osgKaleido/PolyhedronGeometry>
 
 #include <wild/conversion.hpp>
 #include <wild/math.hpp>
@@ -37,8 +38,10 @@ osg::Uniform* createUniformArray(std::string const& name, unsigned int numElemen
 	return result;
 }
 
-void makeInstanced(osg::ref_ptr<osg::Geometry>& geometry, int nInstances)
+void makeInstanced(osg::Geometry* geometry, int nInstances)
 {
+	if (geometry == nullptr) return;
+
 	osg::Geometry::PrimitiveSetList sets = geometry->getPrimitiveSetList();
 	for (auto const& set: sets)
 	{
@@ -63,14 +66,14 @@ void setupPolyhedronGeode(osg::Geode& geode)
 	geode.setDataVariance(osg::Object::DYNAMIC);
 }
 
-void updatePolyhedronGeode(osg::ref_ptr<osgKaleido::PolyhedronGeode>& pgeode, int index, int faces)
+void updatePolyhedronGeode(osg::ref_ptr<osgKaleido::PolyhedronGeometry>& pgeode, int index, unsigned int faces)
 {
 	auto symbol = "#" + wild::conversion_cast<std::string>(wild::mod(index, 80) + 1);
 
 	pgeode->setSymbol(symbol);
-	pgeode->setFaceMask(static_cast<osgKaleido::PolyhedronGeode::FaceMask>(faces));
+	pgeode->setFaceMask(static_cast<osgKaleido::PolyhedronGeometry::FaceMask>(faces));
 
-	auto const& polyhedron = pgeode->getPolyhedron();
+	auto const& polyhedron = pgeode->getOrCreatePolyhedron();
 
 	OSG_INFO << polyhedron->getName() << " (" << polyhedron->getDualName() << "*)" << std::endl;
 	OSG_INFO << polyhedron->getWythoffSymbol() << std::endl;
@@ -96,8 +99,10 @@ void setupVertexGeode(osg::Geode& geode)
 	geode.setDataVariance(osg::Object::DYNAMIC);
 }
 
-void updateVertexGeode(osg::ref_ptr<osg::Geode>& geode, osgKaleido::Polyhedron const& polyhedron, osg::ref_ptr<osg::Geometry>& geometry)
+void updateVertexGeode(osg::ref_ptr<osg::Geode>& geode, osgKaleido::Polyhedron const& polyhedron, osg::Geometry* geometry)
 {
+	if (geometry == nullptr) return;
+
 	osg::ref_ptr<osg::Vec3Array> vertices = osgKaleido::createVertexArray(polyhedron);
 
 	auto instances = 128;
@@ -128,14 +133,14 @@ osg::Matrix3 inverseTranspose(osg::Matrixf const& m)
 	);
 }
 
-void transform(osg::ref_ptr<osg::Geometry>& geometry, osg::Matrixf const& matrix)
+void transform(osg::Geometry& geometry, osg::Matrixf const& matrix)
 {
-	auto vertices = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());
+	auto vertices = dynamic_cast<osg::Vec3Array*>(geometry.getVertexArray());
 	if (vertices != nullptr)
 	{
 		for(auto& vertex: (*vertices)) vertex = matrix * vertex;
 	}
-	auto normals = dynamic_cast<osg::Vec3Array*>(geometry->getNormalArray());
+	auto normals = dynamic_cast<osg::Vec3Array*>(geometry.getNormalArray());
 	if (normals != nullptr)
 	{
 		auto normalMatrix = inverseTranspose(matrix);
@@ -145,13 +150,18 @@ void transform(osg::ref_ptr<osg::Geometry>& geometry, osg::Matrixf const& matrix
 
 int main(int argc, char** argv)
 {
+/*
 	//osg::ref_ptr<osg::Node> test = new osg::Node;
-	//osg::ref_ptr<osgKaleido::PolyhedronGeode> test = new osgKaleido::PolyhedronGeode("#3");
+	osg::ref_ptr<osg::Geode> test = new osg::Geode;
 
-	//std::ostringstream sstream;
-	//osg::ref_ptr<osgDB::Options> options = new osgDB::Options("Ascii");
-	//osgDB::ReaderWriter::WriteResult wr = osgDB::Registry::instance()->getReaderWriterForExtension("osgt")->writeObject(*test, sstream, options);
-	//std::cout << sstream.str() << std::endl;
+	osg::ref_ptr<osgKaleido::PolyhedronGeometry> testGeometry = new osgKaleido::PolyhedronGeometry("#3", osgKaleido::PolyhedronGeometry::Triangular);
+	test->addDrawable(testGeometry);
+
+	std::ostringstream sstream;
+	osg::ref_ptr<osgDB::Options> options = new osgDB::Options("Ascii");
+	osgDB::ReaderWriter::WriteResult wr = osgDB::Registry::instance()->getReaderWriterForExtension("osgt")->writeObject(*test, sstream, options);
+	std::cout << sstream.str() << std::endl;
+*/
 /*
 	osg::ref_ptr<osg::UIntArray> array = new osg::UIntArray(); 
 	array->push_back( 0 ); 
@@ -180,9 +190,9 @@ int main(int argc, char** argv)
 
 	osgViewer::Viewer viewer(arguments);
 	viewer.setUpViewInWindow((screenSettings.width - windowWidth)/2, (screenSettings.height - windowHeight)/2, 800, 600);
-	viewer.setThreadingModel(osgViewer::Viewer::SingleThreaded);
+	viewer.setRunMaxFrameRate(0.0);
 	//viewer.setRunFrameScheme(osgViewer::Viewer::CONTINUOUS);
-	//viewer.setRunMaxFrameRate(0.0);
+	//viewer.setThreadingModel(osgViewer::Viewer::SingleThreaded);
 	viewer.realize();
 
 	osgViewer::Viewer::Windows windows;
@@ -198,10 +208,18 @@ int main(int argc, char** argv)
 
 	osg::ref_ptr<osg::Group> root = new osg::Group;
 	osg::ref_ptr<osg::Geode> tgeode = new osg::Geode;
-
-	osg::ref_ptr<osgKaleido::PolyhedronGeode> pgeode = new osgKaleido::PolyhedronGeode("#27");
+	osg::ref_ptr<osg::Geode> pgeode = new osg::Geode;
 	setupPolyhedronGeode(*pgeode);
 
+	osg::ref_ptr<osgKaleido::PolyhedronGeometry> pgeometry = new osgKaleido::PolyhedronGeometry("#27");
+	pgeometry->setUseDisplayList(false);
+	pgeometry->setUseVertexBufferObjects(true);
+
+	pgeode->addDrawable(pgeometry);
+/*
+	osg::ref_ptr<osgKaleido::PolyhedronGeode> pgeode = new osgKaleido::PolyhedronGeode("#27");
+	setupPolyhedronGeode(*pgeode);
+*/
 	osg::ref_ptr<osg::Geode> vgeode = new osg::Geode;
 	setupVertexGeode(*vgeode);
 
@@ -248,12 +266,13 @@ int main(int argc, char** argv)
 	int faces = osgKaleido::PolyhedronGeode::All;
 	int index = 26;
 
-	osg::ref_ptr<osg::Geometry> vgeometry = osgKaleido::createGeometry(*pgeode->getPolyhedron());
+	osg::ref_ptr<osgKaleido::PolyhedronGeometry> vgeometry = new osgKaleido::PolyhedronGeometry("#27");
 	vgeometry->setUseVertexBufferObjects(true);
-
+	vgeometry->update(nullptr);
+	
 	osg::Vec3f v(1.0f, 1.0f, 1.0f);
 	osg::Matrixf m = osg::Matrixf::scale(v * 0.125f * 0.25f);
-	transform(vgeometry, m);
+	transform(*vgeometry, m);
 
 	auto colors = dynamic_cast<osg::Vec4Array*>(vgeometry->getColorArray());
 	if (colors != nullptr)
@@ -261,10 +280,10 @@ int main(int argc, char** argv)
 		for(auto& color: (*colors)) color = osg::Vec4(0.25f, 0.25f, 0.25f, 1.0f);
 	}
 
-	updatePolyhedronGeode(pgeode, index, faces);
-	text->setText(pgeode->getPolyhedron()->getName() + "\n" + pgeode->getPolyhedron()->getWythoffSymbol());
+	updatePolyhedronGeode(pgeometry, index, faces);
+	text->setText(pgeometry->getOrCreatePolyhedron()->getName() + "\n" + pgeometry->getOrCreatePolyhedron()->getWythoffSymbol());
 
-	updateVertexGeode(vgeode, *pgeode->getPolyhedron(), vgeometry);
+	updateVertexGeode(vgeode, *pgeometry->getOrCreatePolyhedron(), vgeometry.get());
 
 	eventHandler->onKeyDown([&](const osgGA::GUIEventAdapter& ea){
 		auto key = ea.getKey();
@@ -272,7 +291,7 @@ int main(int argc, char** argv)
 		if (0 <= num && num <= 9)
 		{
 			faces ^= osgKaleido::PolyhedronGeode::FaceMaskFromSides(wild::mod(num-1, 10) + 3);
-			updatePolyhedronGeode(pgeode, index, faces);
+			updatePolyhedronGeode(pgeometry, index, faces);
 			return true;
 		}
 		switch (key)
@@ -291,20 +310,20 @@ int main(int argc, char** argv)
 		{
 			faces = osgKaleido::PolyhedronGeode::All;
 			index++;
-			updatePolyhedronGeode(pgeode, index, faces);
-			text->setText(pgeode->getPolyhedron()->getName() + "\n" + pgeode->getPolyhedron()->getWythoffSymbol());
+			updatePolyhedronGeode(pgeometry, index, faces);
+			text->setText(pgeometry->getOrCreatePolyhedron()->getName() + "\n" + pgeometry->getOrCreatePolyhedron()->getWythoffSymbol());
 
-			updateVertexGeode(vgeode, *pgeode->getPolyhedron(), vgeometry);
+			updateVertexGeode(vgeode, *pgeometry->getOrCreatePolyhedron(), vgeometry.get());
 			return true;
 		}
 		case osgGA::GUIEventAdapter::KEY_Left:
 		{
 			faces = osgKaleido::PolyhedronGeode::All;
 			index--;
-			updatePolyhedronGeode(pgeode, index, faces);
-			text->setText(pgeode->getPolyhedron()->getName() + "\n" + pgeode->getPolyhedron()->getWythoffSymbol());
+			updatePolyhedronGeode(pgeometry, index, faces);
+			text->setText(pgeometry->getOrCreatePolyhedron()->getName() + "\n" + pgeometry->getOrCreatePolyhedron()->getWythoffSymbol());
 
-			updateVertexGeode(vgeode, *pgeode->getPolyhedron(), vgeometry);
+			updateVertexGeode(vgeode, *pgeometry->getOrCreatePolyhedron(), vgeometry.get());
 			return true;
 		}
 		default:

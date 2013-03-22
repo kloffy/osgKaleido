@@ -63,8 +63,10 @@ SET(KALEIDO_HEADER_FILES
 
 SET(SRC_FILES
 	src/DynamicGeode.cpp
+	src/DynamicGeometry.cpp
 	src/Polyhedron.cpp
 	src/PolyhedronGeode.cpp
+	src/PolyhedronGeometry.cpp
 	src/Util.cpp
 )
 
@@ -75,9 +77,11 @@ SET(PRIVATE_HEADER_FILES
 
 SET(PUBLIC_HEADER_FILES
 	include/osgKaleido/DynamicGeode
+	include/osgKaleido/DynamicGeometry
 	include/osgKaleido/Export
 	include/osgKaleido/Polyhedron
 	include/osgKaleido/PolyhedronGeode
+	include/osgKaleido/PolyhedronGeometry
 )
 
 SET(HEADER_FILES
@@ -107,6 +111,8 @@ SOURCE_GROUP("Source Files" FILES ${SRC_FILES})
 SET_TARGET_PROPERTIES(osgKaleido PROPERTIES PUBLIC_HEADER "${PUBLIC_HEADER_FILES}")
 
 TARGET_LINK_LIBRARIES(osgKaleido
+	debug     ${OPENTHREADS_LIBRARY_DEBUG}
+	optimized ${OPENTHREADS_LIBRARY}
 	debug     ${OSG_LIBRARY_DEBUG}
 	optimized ${OSG_LIBRARY}
 	debug     ${OSGDB_LIBRARY_DEBUG}

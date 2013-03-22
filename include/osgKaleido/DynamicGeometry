@@ -1,0 +1,44 @@
+#ifndef OSGKALEIDO_DYNAMICGEOMETRY_INCLUDED
+#define OSGKALEIDO_DYNAMICGEOMETRY_INCLUDED
+
+#include <osgKaleido/Export>
+
+#include <osg/Geometry>
+
+namespace osgKaleido {
+
+// OpenSceneGraph 3.0 - Beginner's Guide
+// Chapter 8 (Time for action – drawing a geometry dynamically)
+
+class OSGKALEIDO_EXPORT DynamicGeometry: public osg::Geometry
+{
+	class Callback : public osg::Drawable::UpdateCallback
+	{
+	public:
+		virtual void update(osg::NodeVisitor*, osg::Drawable*);
+	};
+
+public:
+	DynamicGeometry();
+	DynamicGeometry(DynamicGeometry const&, osg::CopyOp const& = osg::CopyOp::SHALLOW_COPY);
+
+	inline bool isDirty() const { return _dirty; }
+	inline void dirty() { _dirty = true; }
+
+	void update(osg::NodeVisitor*);
+
+protected:
+	virtual ~DynamicGeometry();
+
+	inline void clean() { _dirty = false; }
+
+	virtual void updateImplementation(osg::NodeVisitor*) = 0;
+
+private:
+	Callback* _callback;
+	bool _dirty;
+};
+
+} // osgKaleido
+
+#endif // OSGKALEIDO_DYNAMICGEOMETRY_INCLUDED

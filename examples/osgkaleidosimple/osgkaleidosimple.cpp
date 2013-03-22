@@ -2,13 +2,13 @@
 #pragma warning(disable: 4250)
 
 #include <osg/ArgumentParser>
-//#include <osgGA/LambdaEventHandler>
+#include <osg/LightModel>
 #include <osgGA/TrackballManipulator>
 #include <osgViewer/Viewer>
 
 #pragma warning(pop)
 
-#include <osgKaleido/PolyhedronGeode>
+#include <osgKaleido/PolyhedronGeometry>
 
 int main(int argc, char** argv)
 {
@@ -32,13 +32,28 @@ int main(int argc, char** argv)
 
 	osgViewer::Viewer viewer(arguments);
 	viewer.setUpViewInWindow((screenSettings.width - windowWidth)/2, (screenSettings.height - windowHeight)/2, 800, 600);
+	viewer.setRunMaxFrameRate(0.0);
 	viewer.realize();
 
-	// Great ditrigonal icosidodecahedron
-	osg::ref_ptr<osgKaleido::PolyhedronGeode> polyhedron = new osgKaleido::PolyhedronGeode("3/2|3 5");
+	osg::LightModel* lightModel = new osg::LightModel;  
+	lightModel->setTwoSided(true);
 
-	viewer.setSceneData(polyhedron.get());
-	viewer.setCameraManipulator(new osgGA::TrackballManipulator);
+	osg::ref_ptr<osg::Geode> root = new osg::Geode;
+
+	auto stateSet = root->getOrCreateStateSet();
+	stateSet->setAttributeAndModes(lightModel, osg::StateAttribute::ON);
+
+	osg::ref_ptr<osgKaleido::PolyhedronGeometry> geometry = new osgKaleido::PolyhedronGeometry("3/2|3 5");
+	//osg::ref_ptr<osgKaleido::PolyhedronGeometry> geometry = new osgKaleido::PolyhedronGeometry("#80");
+
+	auto polyhedron = geometry->getOrCreatePolyhedron();
+	OSG_WARN << polyhedron->getName() << std::endl;
+	OSG_WARN << polyhedron->getWythoffSymbol() << std::endl;
+	OSG_WARN << polyhedron->getVertexConfiguration() << std::endl;
+
+	root->addDrawable(geometry);
+
+	viewer.setSceneData(root.get());
 
 	return viewer.run();
 }
