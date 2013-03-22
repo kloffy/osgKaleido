@@ -48,6 +48,103 @@ osg::Vec4 calculateColor(osg::Vec3Array* vertices, osg::UShortArray* polygon)
 	return result;
 }
 
+osg::Vec3Array* getOrCreateVertexArray(osg::Geometry& geometry)
+{
+	auto result = dynamic_cast<osg::Vec3Array*>(geometry.getVertexArray());
+
+	if (result == nullptr)
+	{
+		result = new osg::Vec3Array;
+		geometry.setVertexArray(result);
+	}
+
+	return result;
+}
+
+osg::Vec3Array* getOrCreateNormalArray(osg::Geometry& geometry)
+{
+	auto result = dynamic_cast<osg::Vec3Array*>(geometry.getNormalArray());
+
+	if (result == nullptr)
+	{
+		result = new osg::Vec3Array;
+		geometry.setNormalArray(result);
+		geometry.setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
+	}
+
+	return result;
+}
+
+osg::Vec4Array* getOrCreateColorArray(osg::Geometry& geometry)
+{
+	auto result = dynamic_cast<osg::Vec4Array*>(geometry.getColorArray());
+
+	if (result == nullptr)
+	{
+		result = new osg::Vec4Array;
+		geometry.setColorArray(result);
+		geometry.setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+	}
+
+	return result;
+}
+
+void createFaces(osg::Geometry& geometry, Polyhedron const& polyhedron, PolyhedronGeometry::FaceMask faceMask = PolyhedronGeometry::All)
+{
+	osgUtil::Tessellator tessellator;
+	tessellator.setTessellationType(osgUtil::Tessellator::TESS_TYPE_POLYGONS);
+	tessellator.setWindingType(osgUtil::Tessellator::TESS_WINDING_NONZERO);
+
+	auto _vertices = getOrCreateVertexArray(geometry);
+	auto _normals = getOrCreateNormalArray(geometry);
+	auto _colors = getOrCreateColorArray(geometry);
+
+	osg::ref_ptr<osg::Vec3Array> vertices = createVertexArray(polyhedron);
+	VertexIndexArrays polygons = createVertexIndexArrays(polyhedron);
+
+	for (auto const& polygon: polygons)
+	{
+		assert(polygon && polygon->size() >= 3);
+
+		if (!(faceMask & PolyhedronGeometry::FaceMaskFromSides(polygon->size()))) continue;
+
+		auto first = _vertices->size();
+		auto count = polygon->size();
+
+		auto normal = detail::calculateNormal(vertices, polygon);
+		auto color = detail::calculateColor(vertices, polygon);
+
+		for (auto i = 0u; i < polygon->size(); ++i)
+		{
+			auto vertex = vertices->at(polygon->at(i));
+			_vertices->push_back(vertex);
+			_normals->push_back(normal);
+			_colors->push_back(color);
+		}
+
+		geometry.addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, first, count));
+	}
+
+	tessellator.retessellatePolygons(geometry);
+}
+
+void deleteFaces(osg::Geometry& geometry)
+{
+	geometry.removePrimitiveSet(0, geometry.getNumPrimitiveSets());
+
+	auto _vertices = detail::getOrCreateVertexArray(geometry);
+	auto _normals = detail::getOrCreateNormalArray(geometry);
+	auto _colors = detail::getOrCreateColorArray(geometry);
+
+	_vertices->clear();
+	_normals->clear();
+	_colors->clear();
+
+	_vertices->dirty();
+	_normals->dirty();
+	_colors->dirty();
+}
+
 } // detail
 
 /**
@@ -103,9 +200,9 @@ std::string const& PolyhedronGeometry::getSymbol() const
 
 void PolyhedronGeometry::setSymbol(std::string const& symbol)
 {
-	_symbol = symbol;
-
 	_polyhedron = nullptr;
+
+	_symbol = symbol;
 
 	dirty();
 }
@@ -132,100 +229,47 @@ Polyhedron const* PolyhedronGeometry::getOrCreatePolyhedron()
 	return _polyhedron.get();
 }
 
-osg::Vec3Array* PolyhedronGeometry::getOrCreateVertexArray()
-{
-	auto result = dynamic_cast<osg::Vec3Array*>(getVertexArray());
-
-	if (result == nullptr)
-	{
-		result = new osg::Vec3Array;
-		setVertexArray(result);
-	}
-
-	return result;
-}
-
-osg::Vec3Array* PolyhedronGeometry::getOrCreateNormalArray()
-{
-	auto result = dynamic_cast<osg::Vec3Array*>(getNormalArray());
-
-	if (result == nullptr)
-	{
-		result = new osg::Vec3Array;
-		setNormalArray(result);
-		setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
-	}
-
-	return result;
-}
-
-osg::Vec4Array* PolyhedronGeometry::getOrCreateColorArray()
-{
-	auto result = dynamic_cast<osg::Vec4Array*>(getColorArray());
-
-	if (result == nullptr)
-	{
-		result = new osg::Vec4Array;
-		setColorArray(result);
-		setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-	}
-
-	return result;
-}
-
 void PolyhedronGeometry::updateImplementation(osg::NodeVisitor* nv)
 {
 	OSG_WARN << "Update!" << std::endl;
 
-	removePrimitiveSet(0, getNumPrimitiveSets());
-
-	auto _vertices = getOrCreateVertexArray();
-	auto _normals = getOrCreateNormalArray();
-	auto _colors = getOrCreateColorArray();
-
-	_vertices->clear();
-	_normals->clear();
-	_colors->clear();
+	detail::deleteFaces(*this);
 
 	auto polyhedron = getOrCreatePolyhedron();
 
 	if (polyhedron == nullptr) return;
 
-	osgUtil::Tessellator tessellator;
-	tessellator.setTessellationType(osgUtil::Tessellator::TESS_TYPE_POLYGONS);
-	tessellator.setWindingType(osgUtil::Tessellator::TESS_WINDING_NONZERO);
+	detail::createFaces(*this, *polyhedron, _faceMask);
+}
 
-	osg::ref_ptr<osg::Vec3Array> vertices = createVertexArray(*polyhedron);
-	VertexIndexArrays polygons = createVertexIndexArrays(*polyhedron);
+osg::Geometry* createGeometry(Polyhedron const& polyhedron, PolyhedronGeometry::FaceMask faceMask)
+{
+	osg::ref_ptr<osg::Geometry> result = new osg::Geometry;
+
+	detail::createFaces(*result, polyhedron, faceMask);
+
+	return result.release();
+}
+
+osg::Geometry* createBasicGeometry(Polyhedron const& polyhedron, PolyhedronGeometry::FaceMask faceMask)
+{
+	osg::ref_ptr<osg::Geometry> result = new osg::Geometry;
+
+	osg::ref_ptr<osg::Vec3Array> vertices = createVertexArray(polyhedron);
+	VertexIndexArrays polygons = createVertexIndexArrays(polyhedron);
+
+	result->setVertexArray(vertices);
 
 	for (auto const& polygon: polygons)
 	{
 		assert(polygon && polygon->size() >= 3);
 
-		if (!(_faceMask & PolyhedronGeometry::FaceMaskFromSides(polygon->size()))) continue;
+		if (!(faceMask & PolyhedronGeometry::FaceMaskFromSides(polygon->size()))) continue;
 
-		auto first = _vertices->size();
-		auto count = polygon->size();
-
-		auto normal = detail::calculateNormal(vertices, polygon);
-		auto color = detail::calculateColor(vertices, polygon);
-
-		for (auto i = 0u; i < polygon->size(); ++i)
-		{
-			auto vertex = vertices->at(polygon->at(i));
-			_vertices->push_back(vertex);
-			_normals->push_back(normal);
-			_colors->push_back(color);
-		}
-
-		addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, first, count));
+		result->addPrimitiveSet(new osg::DrawElementsUShort(osg::PrimitiveSet::POLYGON, polygon->size(), &polygon->front()));
 	}
 
-	_vertices->dirty();
-	_normals->dirty();
-	_colors->dirty();
-
-	tessellator.retessellatePolygons(*this);
+	return result.release();
 }
 
 } // osgKaleido

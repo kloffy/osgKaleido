@@ -46,10 +46,6 @@ public:
 protected:
 	virtual ~PolyhedronGeometry();
 
-	osg::Vec3Array* getOrCreateVertexArray();
-	osg::Vec3Array* getOrCreateNormalArray();
-	osg::Vec4Array* getOrCreateColorArray();
-
 	virtual void updateImplementation(osg::NodeVisitor*);
 
 private:
@@ -58,6 +54,9 @@ private:
 
 	osg::ref_ptr<Polyhedron> _polyhedron;
 };
+
+extern OSGKALEIDO_EXPORT osg::Geometry* createGeometry(Polyhedron const&, PolyhedronGeometry::FaceMask = PolyhedronGeometry::All);
+extern OSGKALEIDO_EXPORT osg::Geometry* createBasicGeometry(Polyhedron const&, PolyhedronGeometry::FaceMask = PolyhedronGeometry::All);
 
 } // osgKaleido
 
