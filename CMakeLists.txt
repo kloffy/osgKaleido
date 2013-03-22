@@ -62,10 +62,8 @@ SET(KALEIDO_HEADER_FILES
 )
 
 SET(SRC_FILES
-	src/DynamicGeode.cpp
 	src/DynamicGeometry.cpp
 	src/Polyhedron.cpp
-	src/PolyhedronGeode.cpp
 	src/PolyhedronGeometry.cpp
 	src/Util.cpp
 )
@@ -76,11 +74,9 @@ SET(PRIVATE_HEADER_FILES
 )
 
 SET(PUBLIC_HEADER_FILES
-	include/osgKaleido/DynamicGeode
 	include/osgKaleido/DynamicGeometry
 	include/osgKaleido/Export
 	include/osgKaleido/Polyhedron
-	include/osgKaleido/PolyhedronGeode
 	include/osgKaleido/PolyhedronGeometry
 )
 

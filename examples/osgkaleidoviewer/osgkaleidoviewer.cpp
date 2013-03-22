@@ -15,7 +15,6 @@
 
 #pragma warning(pop)
 
-#include <osgKaleido/PolyhedronGeode>
 #include <osgKaleido/PolyhedronGeometry>
 
 #include <wild/conversion.hpp>
@@ -263,7 +262,7 @@ int main(int argc, char** argv)
 */
 	osg::ref_ptr<osgGA::LambdaEventHandler> eventHandler = new osgGA::LambdaEventHandler;
 	
-	int faces = osgKaleido::PolyhedronGeode::All;
+	int faces = osgKaleido::PolyhedronGeometry::All;
 	int index = 26;
 
 	osg::ref_ptr<osgKaleido::PolyhedronGeometry> vgeometry = new osgKaleido::PolyhedronGeometry("#27");
@@ -290,7 +289,7 @@ int main(int argc, char** argv)
 		auto num = key - osgGA::GUIEventAdapter::KEY_0;
 		if (0 <= num && num <= 9)
 		{
-			faces ^= osgKaleido::PolyhedronGeode::FaceMaskFromSides(wild::mod(num-1, 10) + 3);
+			faces ^= osgKaleido::PolyhedronGeometry::FaceMaskFromSides(wild::mod(num-1, 10) + 3);
 			updatePolyhedronGeode(pgeometry, index, faces);
 			return true;
 		}
@@ -308,7 +307,7 @@ int main(int argc, char** argv)
 		}
 		case osgGA::GUIEventAdapter::KEY_Right:
 		{
-			faces = osgKaleido::PolyhedronGeode::All;
+			faces = osgKaleido::PolyhedronGeometry::All;
 			index++;
 			updatePolyhedronGeode(pgeometry, index, faces);
 			text->setText(pgeometry->getOrCreatePolyhedron()->getName() + "\n" + pgeometry->getOrCreatePolyhedron()->getWythoffSymbol());
@@ -318,7 +317,7 @@ int main(int argc, char** argv)
 		}
 		case osgGA::GUIEventAdapter::KEY_Left:
 		{
-			faces = osgKaleido::PolyhedronGeode::All;
+			faces = osgKaleido::PolyhedronGeometry::All;
 			index--;
 			updatePolyhedronGeode(pgeometry, index, faces);
 			text->setText(pgeometry->getOrCreatePolyhedron()->getName() + "\n" + pgeometry->getOrCreatePolyhedron()->getWythoffSymbol());

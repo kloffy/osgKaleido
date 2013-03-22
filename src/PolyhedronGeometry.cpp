@@ -231,7 +231,7 @@ Polyhedron const* PolyhedronGeometry::getOrCreatePolyhedron()
 
 void PolyhedronGeometry::updateImplementation(osg::NodeVisitor* nv)
 {
-	OSG_WARN << "Update!" << std::endl;
+	//OSG_WARN << "Update!" << std::endl;
 
 	detail::deleteFaces(*this);
 
