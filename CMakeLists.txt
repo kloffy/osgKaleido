@@ -119,6 +119,7 @@ TARGET_LINK_LIBRARIES(osgKaleido
 )
 
 ADD_SUBDIRECTORY(examples/osgkaleidosimple)
+ADD_SUBDIRECTORY(examples/osgkaleidosphere)
 ADD_SUBDIRECTORY(examples/osgkaleidoviewer)
 
 INSTALL(TARGETS osgKaleido
