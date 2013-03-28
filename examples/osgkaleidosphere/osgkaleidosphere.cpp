@@ -6,7 +6,6 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgGA/TrackballManipulator>
-#include <osgUtil/SmoothingVisitor>
 #include <osgViewer/Viewer>
 
 #pragma warning(pop)

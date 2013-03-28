@@ -162,7 +162,7 @@ PolyhedronGeometry::FaceMask PolyhedronGeometry::FaceMaskFromSides(int sides)
 int PolyhedronGeometry::SidesFromFaceMask(PolyhedronGeometry::FaceMask faces)
 {
 	assert(faces >= 1);
-	return wild::fls(faces) + 3;
+	return wild::bits::fls(faces) + 3;
 }
 
 PolyhedronGeometry::PolyhedronGeometry():
